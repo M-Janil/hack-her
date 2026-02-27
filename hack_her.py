@@ -304,7 +304,8 @@ def home_page():
     # ───── Location selector ─────
     st.subheader("📍 Your Location")
 
-    # "Get My Location" button only shown to regular users (not sellers)
+    # "Get My Location" button is now completely hidden for sellers
+    # Only shown when the user is logged in as a regular User
     if st.session_state.get("role") == "User":
         components.html("""
             <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
@@ -447,7 +448,6 @@ def home_page():
                 img_url = f"https://loremflickr.com/320/180/appliance,{item_name.lower().replace(' ','_')}"
                 st.image(img_url, use_column_width=True)
 
-                # Fixed Google Maps directions - opens in new tab
                 maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
                 st.markdown(
                     f'<a href="{maps_url}" target="_blank" rel="noopener noreferrer">'
@@ -506,7 +506,6 @@ def home_page():
                             else:
                                 st.error("Please enter a valid price.")
 
-                # Show existing reports
                 if "price_reports" in o and o["price_reports"]:
                     with st.expander("Community reported prices", expanded=False):
                         for r in o["price_reports"]:
