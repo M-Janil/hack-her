@@ -128,7 +128,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY
+# SELLER — MANAGE INVENTORY (now with store location update)
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -142,7 +142,33 @@ def admin_page():
 
     st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
 
-    # CSV Bulk Upload
+    # ───── Update Store Location (NEW) ─────
+    st.divider()
+    st.subheader("Update Store Location")
+
+    current_lat, current_lon = store.get("loc", (9.93, 76.27))  # fallback to Kochi default
+
+    with st.form("update_store_location"):
+        new_lat = st.number_input("Latitude", value=current_lat, format="%.6f", step=0.000001)
+        new_lon = st.number_input("Longitude", value=current_lon, format="%.6f", step=0.000001)
+
+        if st.form_submit_button("Save New Location"):
+            # Update seller's profile
+            store["loc"] = (new_lat, new_lon)
+            st.session_state.store_info = store  # sync session state
+
+            # Also update location in all products this seller owns
+            updated_count = 0
+            for product_name, offers in GLOBAL_CATALOG.items():
+                for offer in offers:
+                    if offer.get("seller_username") == current_user:
+                        offer["loc"] = (new_lat, new_lon)
+                        updated_count += 1
+
+            st.success(f"Store location updated! Applied to {updated_count} product offer(s).")
+            st.rerun()
+
+    # ───── CSV Bulk Upload ─────
     with st.expander("Bulk upload via CSV", expanded=False):
         st.caption("Columns: name, desc, price, sale_price (optional)")
         uploaded = st.file_uploader("Choose CSV file", type="csv", key="csv_upload")
@@ -218,7 +244,7 @@ def admin_page():
                 "seller_username": current_user,
                 "store": store["store_name"],
                 "address": store["address"],
-                "loc": store["loc"],
+                "loc": store["loc"],  # uses the latest store location
                 "price": price,
                 "sale_price": sale_price_input if is_sale else None,
                 "is_sale": is_sale,
@@ -341,10 +367,6 @@ def home_page():
                 st.rerun()
 
         st.divider()
-
-    # Removed the second title repetition — only one title now
-    # No column layout for title anymore — just the caption below the main title
-    st.markdown("### Highkey savings on local appliances")
 
     # ───── Hot sales section ─────
     st.subheader("🔥 Ongoing Sales")
