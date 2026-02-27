@@ -1,112 +1,143 @@
+import streamlit as st
+import pandas as pd
+import difflib
+from geopy.distance import geodesic
+
+# --- CONFIGURATION ---
+st.set_page_config(page_title="LowKey Deals", layout="wide")
+
+# --- 1. THEME: FORCING BLACK TEXT & VISIBLE INPUTS ---
 def apply_theme():
-    st.markdown("""
-        <style>
-        /* Modern Sans Serif Font */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-        
-        html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label {
-            font-family: 'Inter', sans-serif;
-            color: #1A1A1A !important;
-        }
+    st.markdown("""
+        <style>
+        /* Force EVERY label and piece of text to Black */
+        html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label, span, .stRadio p {
+            color: #000000 !important;
+            font-weight: 500;
+        }
 
-        /* Gradient Background for a premium feel */
-        .stApp {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
+        /* Make the Input Labels specifically bold and black */
+        .stTextInput label, .stSelectbox label, .stRadio label {
+            color: #000000 !important;
+            font-size: 1.1rem !important;
+            font-weight: bold !important;
+        }
 
-        /* The "Deal Card" styling */
-        .deal-card {
-            background-color: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border-left: 5px solid #8B4513;
-            transition: transform 0.3s ease;
-        }
-        .deal-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
+        /* Set Background to White */
+        .stApp {
+            background-color: #FFFFFF;
+        }
 
-        /* Custom Button Styling */
-        div.stButton > button {
-            border-radius: 20px !important;
-            background-color: #8B4513 !important;
-            transition: 0.3s;
-        }
-        div.stButton > button:hover {
-            background-color: #A0522D !important;
-            border: 1px solid white !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+        /* Style Input Boxes so they are visible with black text inside */
+        input {
+            color: #000000 !important;
+            background-color: #F0F2F6 !important;
+            border: 2px solid #8B4513 !important;
+        }
+
+        /* Style the Buttons */
+        div.stButton > button {
+            background-color: #8B4513 !important;
+            color: #FFFFFF !important;
+            font-weight: bold;
+            border: none;
+            padding: 10px 30px;
+        }
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {
+            background-color: #F5F5DC !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. DATA INITIALIZATION ---
+def init_data():
+    if 'items' not in st.session_state:
+        st.session_state.items = {
+            "Refrigerator": {"desc": "Double door, 250L", "price": 25000},
+            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000},
+            "Microwave Oven": {"desc": "Convection, 20L", "price": 8500},
+            "Air Conditioner": {"desc": "1.5 Ton, 5 Star", "price": 35000},
+            "Vacuum Cleaner": {"desc": "Handheld, Cordless", "price": 12000},
+            "Dishwasher": {"desc": "12 Place Settings", "price": 45000}
+        }
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'username' not in st.session_state:
+        st.session_state.username = ""
+    if 'search_query' not in st.session_state:
+        st.session_state.search_query = ""
+
+# --- 3. UI PAGES ---
+def login_page():
+    st.title("Welcome to LowKey Deals")
+    st.radio("Select Role", ["User", "Seller"], key="role_selection")
+    
+    user = st.text_input("Username", key="user_input")
+    pw = st.text_input("Password", type="password", key="pw_input")
+    
+    if st.button("Login"):
+        if user:
+            st.session_state.authenticated = True
+            st.session_state.username = user
+            st.rerun()
 
 def home_page():
-    # Hero Section
-    st.title("✨ LowKey Deals")
-    st.subheader("Highkey savings on local appliances.")
-    
-    # Quick Stats/Trust Bar
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Deals Found", "1,240", "+12 today")
-    c2.metric("Top Discount", "45%", "Microwaves")
-    c3.metric("Verified Sellers", "85", "Nearby")
+    st.title("LowKey Deals")
+    st.markdown("### *Lowkey the best prices near you.*")
+    
+    # --- SEARCH BAR SECTION ---
+    st.markdown("---")
+    search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Fridge' or 'Oven'...", key="main_search")
+    
+    if search_input:
+        # Fuzzy matching logic
+        all_items = list(st.session_state.items.keys())
+        suggestions = difflib.get_close_matches(search_input, all_items, n=3, cutoff=0.3)
+        
+        if suggestions:
+            st.write("Did you mean:")
+            cols = st.columns(len(suggestions))
+            for i, suggestion in enumerate(suggestions):
+                if cols[i].button(f"👉 {suggestion}", key=f"sug_{suggestion}"):
+                    st.session_state.selected_item = suggestion
+                    st.rerun()
+    
+    st.markdown("---")
+    
+    # Display Details for selected item or general list
+    if 'selected_item' in st.session_state:
+        item_name = st.session_state.selected_item
+        st.subheader(f"Results for: {item_name}")
+        st.write(st.session_state.items[item_name]['desc'])
+        st.write(f"**Best Price: ₹{st.session_state.items[item_name]['price']}**")
+        if st.button("Back to All Items"):
+            del st.session_state.selected_item
+            st.rerun()
+    else:
+        st.header("Featured Appliances")
+        items = st.session_state.get('items', {})
+        cols = st.columns(2)
+        for i, (name, info) in enumerate(items.items()):
+            with cols[i % 2]:
+                st.markdown(f"#### {name}")
+                st.write(info['desc'])
+                st.write(f"**Price: ₹{info['price']}**")
+                if st.button(f"View Details", key=f"home_btn_{name}"):
+                    st.session_state.selected_item = name
+                    st.rerun()
 
-    # Search Section with better UI
-    with st.container():
-        st.markdown("### 🔍 What are you hunting for?")
-        search_input = st.text_input("", placeholder="Try 'Washing Machine'...", label_visibility="collapsed")
-        
-        if search_input:
-            all_items = list(st.session_state.items.keys())
-            suggestions = difflib.get_close_matches(search_input, all_items, n=3, cutoff=0.3)
-            if suggestions:
-                cols = st.columns(len(suggestions) + 1)
-                cols[0].write("Suggestions:")
-                for i, sug in enumerate(suggestions):
-                    if cols[i+1].button(sug, key=f"sug_{sug}"):
-                        st.session_state.selected_item = sug
-                        st.rerun()
+# --- 4. EXECUTION FLOW ---
+apply_theme()
+init_data()
 
-    st.divider()
-
-    # Product Grid
-    if 'selected_item' in st.session_state:
-        # Detailed View
-        item = st.session_state.items[st.session_state.selected_item]
-        col_img, col_info = st.columns([1, 1])
-        with col_img:
-            # Placeholder for image
-            st.image("https://via.placeholder.com/400x300.png?text=Product+Image", use_container_width=True)
-        with col_info:
-            st.header(st.session_state.selected_item)
-            st.write(f"**Description:** {item['desc']}")
-            st.markdown(f"## ₹{item['price']:,}")
-            st.success("✅ In Stock - Pickup within 2 hours")
-            if st.button("Reserve This Deal"):
-                st.balloons()
-                st.toast("Deal Reserved!")
-            if st.button("⬅️ Back to Browse"):
-                del st.session_state.selected_item
-                st.rerun()
-    else:
-        # Trending Section
-        st.markdown("### 🔥 Trending Near You")
-        items = st.session_state.items
-        
-        # Create a grid using a loop and container styling
-        cols = st.columns(3)
-        for i, (name, info) in enumerate(items.items()):
-            with cols[i % 3]:
-                st.markdown(f"""
-                <div class="deal-card">
-                    <p style="font-size: 0.8rem; color: #8B4513; font-weight: bold;">LOCAL DEAL</p>
-                    <h4 style="margin: 0;">{name}</h4>
-                    <p style="font-size: 0.9rem; color: #666;">{info['desc']}</p>
-                    <p style="font-size: 1.2rem; font-weight: bold; color: #1A1A1A;">₹{info['price']:,}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"View {name}", key=f"btn_{name}"):
-                    st.session_state.selected_item = name
-                    st.rerun()
+if not st.session_state.authenticated:
+    login_page()
+else:
+    with st.sidebar:
+        st.markdown(f"### Logged in: {st.session_state.username}")
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.rerun()
+    home_page() 
