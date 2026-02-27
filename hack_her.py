@@ -8,7 +8,7 @@ st.set_page_config(page_title="LowKey Deals", layout="wide")
 
 # --- 1. THEME: FORCING BLACK TEXT & VISIBLE INPUTS ---
 def apply_theme():
-    st.markdown("""
+    st.markdown(""")
         <style>
         /* Force EVERY label and piece of text to Black */
         html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label, span, .stRadio p {
