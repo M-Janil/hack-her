@@ -127,7 +127,6 @@ def admin_page():
     store = st.session_state.store_info
     st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
 
-    # CSV Bulk Upload
     with st.expander("Bulk upload via CSV"):
         st.caption("Columns: name, desc, price, sale_price (optional)")
         uploaded = st.file_uploader("Choose CSV file", type="csv")
@@ -180,7 +179,6 @@ def admin_page():
 
     st.divider()
 
-    # Single item form
     st.subheader("Add / Update Single Item")
     with st.form("single_item"):
         c1, c2 = st.columns([3,2])
@@ -231,7 +229,6 @@ def home_page():
     st.subheader("🗺️ Your Location")
     st.write("Share your location for accurate distance calculation")
 
-    # Only show "Get My Location" to users (not sellers)
     if st.session_state.get("role") == "User":
         components.html("""
             <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
@@ -259,7 +256,6 @@ def home_page():
             </script>
         """, height=70)
 
-    # Read location from URL params
     query_params = st.query_params
     if 'lat' in query_params and 'lon' in query_params:
         try:
@@ -282,7 +278,7 @@ def home_page():
     col_title, col_loc = st.columns([4, 1])
     with col_title:
         st.title("✨ LowKey Deals")
-        st.markdown("### Find the best local appliance prices near you 🛒💸")
+        st.markdown("### Highkey savings on local appliances")
     with col_loc:
         st.caption("📍 Your location")
         st.code(f"{st.session_state.user_location[0]:.4f}, {st.session_state.user_location[1]:.4f}")
@@ -321,7 +317,6 @@ def home_page():
         offers = GLOBAL_CATALOG.get(name, [])
         if offers:
             st.header(name)
-            # Simple display – you can expand this part with effort score, reviews, etc.
             for o in offers:
                 dist = geodesic(st.session_state.user_location, o["loc"]).km
                 price = o["sale_price"] if o.get("is_sale") else o["price"]
@@ -334,7 +329,8 @@ def home_page():
                 </div>
                 """, unsafe_allow_html=True)
             if st.button("← Back"):
-                del st.session_state.selected_item
+                if 'selected_item' in st.session_state:
+                    del st.session_state.selected_item
                 st.rerun()
         else:
             st.info("No offers found.")
@@ -434,7 +430,7 @@ def auth_page():
                     st.success("Seller account created. Please log in.")
 
 # ────────────────────────────────────────────────
-# MAIN FLOW
+# MAIN APPLICATION FLOW
 # ────────────────────────────────────────────────
 apply_theme()
 init_data()
@@ -443,18 +439,21 @@ if not st.session_state.get("authenticated", False):
     auth_page()
 else:
     with st.sidebar:
-        st.markdown(f"**{st.session_state.username}** • {st.session_state.role}")
+        st.markdown(f"**Welcome, {st.session_state.username}** 👋")
+        st.caption(f"Role: {st.session_state.role}")
+
         if st.session_state.role == "Seller":
-            page = st.radio("Menu", ["Home", "Manage Inventory"])
+            nav = st.radio("Dashboard", ["Home", "Manage Inventory"])
         else:
-            page = "Home"
+            nav = st.radio("Dashboard", ["Home"])
 
         st.divider()
         if st.button("Logout"):
-            st.session_state.clear()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
 
-    if page == "Manage Inventory" and st.session_state.role == "Seller":
+    if nav == "Manage Inventory" and st.session_state.role == "Seller":
         admin_page()
     else:
         home_page()
