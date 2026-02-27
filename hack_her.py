@@ -233,7 +233,7 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # My Products – Delete & Update Price
+    # My Products – Delete & Update Price (FIXED HERE)
     st.divider()
     st.subheader("My Added Products")
 
@@ -255,22 +255,32 @@ def admin_page():
 
             cols = st.columns([4, 1, 1])
             with cols[0]:
-                st.markdown(f"**{name}** — ₹{o.get('sale_price') or o['price']:,}")
+                current_price = o.get('sale_price') or o['price']
+                st.markdown(f"**{name}** — ₹{current_price:,}")
+
             with cols[1]:
                 if st.button("✏️ Update Price", key=f"update_price_{name}_{current_user}"):
                     with st.form(key=f"price_update_{name}_{current_user}"):
                         new_price = st.number_input("New regular price (₹)", value=float(o["price"]), min_value=0.0, step=100.0)
                         new_sale_price = st.number_input("New sale price (optional)", value=float(o.get("sale_price") or 0), min_value=0.0, step=100.0)
+
                         if st.form_submit_button("Save New Prices"):
-                            o["price"] = new_price
-                            if new_sale_price > 0 and new_sale_price < new_price:
-                                o["sale_price"] = new_sale_price
-                                o["is_sale"] = True
-                            else:
-                                o["sale_price"] = None
-                                o["is_sale"] = False
-                            st.success(f"Price updated for **{name}**")
+                            # IMPORTANT: update the actual shared offer in GLOBAL_CATALOG
+                            for prod_name, prod_offers in GLOBAL_CATALOG.items():
+                                for prod_offer in prod_offers:
+                                    if prod_offer is o:  # same object reference
+                                        prod_offer["price"] = new_price
+                                        if new_sale_price > 0 and new_sale_price < new_price:
+                                            prod_offer["sale_price"] = new_sale_price
+                                            prod_offer["is_sale"] = True
+                                        else:
+                                            prod_offer["sale_price"] = None
+                                            prod_offer["is_sale"] = False
+                                        break
+
+                            st.success(f"Price updated for **{name}** → Regular: ₹{new_price:,}, Sale: {new_sale_price if new_sale_price > 0 else 'None'}")
                             st.rerun()
+
             with cols[2]:
                 if st.button("🗑️ Delete", key=f"delete_{name}_{current_user}", type="primary", help="Remove this product"):
                     GLOBAL_CATALOG[name] = [
@@ -289,7 +299,7 @@ def home_page():
     st.title("✨ LowKey Deals")
     st.caption("Discover the best local appliance prices near you")
 
-    # ───── Location selector ───── only for users
+    # Location section — only for regular users
     if st.session_state.get("role") == "User":
         st.subheader("📍 Your Location")
 
