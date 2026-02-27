@@ -6,83 +6,59 @@ from geopy.distance import geodesic
 # --- CONFIGURATION ---
 st.set_page_config(page_title="LowKey Deals", layout="wide")
 
-# --- 1. CHARMING CUSTOM THEME ---
+# --- 1. CLEAN BROWN & WHITE THEME ---
 def apply_theme():
     st.markdown("""
         <style>
-        /* Global Font and Background */
-        html, body, [data-testid="stHeader"] {
+        /* Background and Global Text */
+        .stApp {
             background-color: #FFFFFF;
         }
         
-        /* Charming Typography */
-        h1, h2, h3 {
-            color: #3D2B1F !important; /* Deep Espresso Brown */
-            font-family: 'Trebuchet MS', sans-serif;
-            font-weight: 800 !important;
-        }
-        
-        p, label, span, .stRadio p {
+        /* Force All Text to Black for visibility */
+        h1, h2, h3, h4, p, label, span, .stRadio p {
             color: #000000 !important;
-            font-weight: 500;
         }
 
-        /* Modern Input Boxes */
+        /* Input Boxes: White background with Brown border */
         .stTextInput>div>div>input {
-            background-color: #FDF5E6 !important; /* Old Lace White */
+            background-color: #FFFFFF !important;
             color: #000000 !important;
             border: 2px solid #8B4513 !important;
-            border-radius: 15px !important;
-            padding: 10px !important;
+            border-radius: 4px !important;
         }
 
-        /* Charmy Store Cards */
-        .store-card {
-            background: #FFFFFF;
-            border-left: 10px solid #8B4513;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            transition: transform 0.2s;
-        }
-        .store-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 5px 5px 20px rgba(139, 69, 19, 0.2);
-        }
-
-        /* Buttons with a glow */
+        /* Buttons: Solid Brown with White Text */
         div.stButton > button {
-            background-color: #3D2B1F !important;
-            color: #FFFFFF !important;
-            border-radius: 12px !important;
-            border: none !important;
-            padding: 12px 24px !important;
-            font-weight: bold !important;
-            box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
-        }
-        div.stButton > button:hover {
             background-color: #8B4513 !important;
             color: #FFFFFF !important;
+            border-radius: 4px !important;
+            border: none !important;
+            width: 100%;
+        }
+        
+        /* Store Card: Simple Brown Border, no overlap */
+        .store-box {
+            border: 2px solid #8B4513;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #FFFFFF;
         }
 
-        /* Sidebar Styling */
+        /* Sidebar: Brown Background with White Text */
         [data-testid="stSidebar"] {
-            background-color: #3D2B1F !important;
-            border-right: 1px solid #000000;
+            background-color: #8B4513 !important;
         }
         [data-testid="stSidebar"] * {
             color: #FFFFFF !important;
         }
         
-        /* Sale Badge */
-        .sale-badge {
-            background-color: #FFD700;
-            color: #000000 !important;
-            padding: 3px 10px;
-            border-radius: 8px;
-            font-size: 0.8rem;
+        /* Metric/Distance Styling */
+        .dist-text {
+            color: #8B4513;
             font-weight: bold;
+            font-size: 1.1rem;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -90,125 +66,96 @@ def apply_theme():
 # --- 2. DATA INITIALIZATION ---
 def init_data():
     if 'user_location' not in st.session_state:
-        st.session_state.user_location = (10.8505, 76.2711) # Kerala Default
+        # Default Location: Kochi, Kerala
+        st.session_state.user_location = (9.9312, 76.2673)
 
-    # This is the "Database" of items and stores
     if 'items' not in st.session_state:
         st.session_state.items = {
             "Samsung Refrigerator": {
                 "desc": "Double door, 250L Digital Inverter",
                 "stores": [
-                    {"name": "Espresso Electronics", "price": 24500, "coords": (10.8520, 76.2750), "rating": 4.5},
-                    {"name": "Kerala Home Hub", "price": 26000, "coords": (10.8400, 76.2600), "rating": 4.2}
+                    {"name": "Pittappillil Agencies", "price": 24500, "coords": (9.9700, 76.2800), "rating": 4.5},
+                    {"name": "Nandilath G-Mart", "price": 25100, "coords": (9.9912, 76.3000), "rating": 4.1}
                 ]
             },
             "Washing Machine": {
                 "desc": "7kg Fully Automatic Front Load",
                 "stores": [
-                    {"name": "Brown & Black Retail", "price": 17500, "coords": (10.8600, 76.2800), "rating": 4.0}
+                    {"name": "Reliance Digital", "price": 17800, "coords": (10.0100, 76.3200), "rating": 4.3},
+                    {"name": "Bismi Connect", "price": 18500, "coords": (9.9200, 76.2500), "rating": 3.9}
                 ]
             }
         }
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
-    if 'role' not in st.session_state:
-        st.session_state.role = "User"
 
-# --- 3. SELLER FEATURE: HOW TO ADD STORES/PRICES ---
-def seller_page():
-    st.title("Seller Dashboard")
-    st.markdown("### Upload New Deals")
-    
-    with st.form("add_deal_form"):
-        item_choice = st.selectbox("Select Appliance", list(st.session_state.items.keys()))
-        store_name = st.text_input("Your Store Name")
-        price = st.number_input("Price (₹)", min_value=100)
-        lat = st.number_input("Store Latitude", value=10.85)
-        lon = st.number_input("Store Longitude", value=76.27)
-        rating = st.slider("Store Rating", 1.0, 5.0, 4.0)
-        
-        submitted = st.form_submit_button("Post Deal")
-        if submitted:
-            new_store = {
-                "name": store_name,
-                "price": price,
-                "coords": (lat, lon),
-                "rating": rating
-            }
-            st.session_state.items[item_choice]["stores"].append(new_store)
-            st.success(f"Deal for {item_choice} posted successfully!")
-
-# --- 4. HOME PAGE ---
+# --- 3. MAIN UI ---
 def home_page():
-    st.markdown("<h1 style='text-align: center;'>LOWKEY DEALS</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-style: italic;'>Elegant savings, just around the corner.</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #8B4513;'>LowKey Deals</h1>", unsafe_allow_html=True)
+    st.write("The best prices near you, without the noise.")
     
-    # Elegant Search Bar
-    search_input = st.text_input("🔍 What are you looking for today?", placeholder="e.g. Samsung Refrigerator")
+    # Simple Search Bar
+    search_query = st.text_input("🔍 Search for an appliance...", placeholder="e.g. Samsung")
     
-    if search_input:
-        matches = difflib.get_close_matches(search_input, list(st.session_state.items.keys()), n=1, cutoff=0.2)
+    if search_query:
+        # Fuzzy Matching
+        choices = list(st.session_state.items.keys())
+        matches = difflib.get_close_matches(search_query, choices, n=1, cutoff=0.2)
         
         if matches:
             item_name = matches[0]
-            item_data = st.session_state.items[item_name]
-            st.markdown(f"## Deals for {item_name}")
+            item_info = st.session_state.items[item_name]
+            
+            st.markdown(f"### Deals for {item_name}")
+            st.caption(item_info['desc'])
             
             # Show Stores
-            for store in item_data['stores']:
+            for store in item_info['stores']:
+                # Calculate real-world distance
                 dist = round(geodesic(st.session_state.user_location, store['coords']).km, 2)
                 
+                # Manual Card Construction (No overlap)
                 st.markdown(f"""
-                <div class="store-card">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0;">{store['name']}</h3>
-                        <span class="sale-badge">BEST PRICE</span>
-                    </div>
-                    <p style="font-size: 1.5rem; color: #8B4513; margin: 10px 0;">₹{store['price']}</p>
-                    <p><b>📍 Location:</b> {dist} km away</p>
-                    <p><b>⭐ Customer Rating:</b> {store['rating']}/5</p>
-                    <p style="font-size: 0.8rem; color: #666;">Coordinates: {store['coords']}</p>
+                <div class="store-box">
+                    <h4 style="margin:0; color:#8B4513;">{store['name']}</h4>
+                    <p style="font-size: 1.3rem; font-weight: bold; margin: 10px 0;">₹{store['price']}</p>
+                    <p class="dist-text">📍 {dist} km away</p>
+                    <p style="margin:0;">⭐ Rating: {store['rating']}/5</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Maps Trigger
-                map_url = f"https://www.google.com/maps?q={store['coords'][0]},{store['coords'][1]}"
-                st.markdown(f"[Navigate with Google Maps]({map_url})")
+                # Google Maps Link
+                map_link = f"https://www.google.com/maps?q={store['coords'][0]},{store['coords'][1]}"
+                st.markdown(f"[View on Google Maps]({map_link})")
         else:
-            st.warning("We couldn't find that item. Try searching for 'Samsung'!")
+            st.error("No items found. Try searching 'Samsung' or 'Washing'.")
 
     st.divider()
+    st.subheader("Browse All Appliances")
     
-    # Grid of items
-    st.markdown("### Featured Appliances")
-    cols = st.columns(3)
-    for i, (name, info) in enumerate(st.session_state.items.items()):
-        with cols[i % 3]:
+    items = st.session_state.items
+    cols = st.columns(2)
+    for i, (name, info) in enumerate(items.items()):
+        with cols[i % 2]:
             st.markdown(f"**{name}**")
-            st.caption(info['desc'])
-            if st.button("Check Proximity", key=f"check_{name}"):
-                st.info(f"Search for '{name}' above to see the map!")
+            if st.button(f"Find Stores for {name}", key=f"btn_{name}"):
+                st.info(f"Type '{name}' in the search bar above to see specific store distances!")
 
-# --- 5. EXECUTION ---
+# --- 4. EXECUTION ---
 apply_theme()
 init_data()
 
+# Login Logic
 if not st.session_state.authenticated:
-    st.title("Welcome to LowKey")
-    st.session_state.role = st.selectbox("I am a...", ["User", "Seller"])
+    st.markdown("<h2 style='color: #8B4513;'>Login to LowKey</h2>", unsafe_allow_html=True)
     user = st.text_input("Username")
-    if st.button("Enter"):
+    if st.button("Login"):
         st.session_state.authenticated = True
         st.rerun()
 else:
     with st.sidebar:
-        st.markdown("### Account")
-        st.write(f"Logged in as: {st.session_state.role}")
+        st.write("### Welcome to LowKey")
         if st.button("Logout"):
             st.session_state.authenticated = False
             st.rerun()
-
-    if st.session_state.role == "Seller":
-        seller_page()
-    else:
-        home_page()
+    home_page()
