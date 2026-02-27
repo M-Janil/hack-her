@@ -16,40 +16,54 @@ def apply_theme():
             font-weight: 500;
         }
 
-        /* Set Background to White */
-        .stApp {
-            background-color: #FFFFFF;
-        }
+        .stApp { background-color: #FFFFFF; }
 
-        /* Card Styling for "Life" */
+        /* Enhanced Card Styling */
         .deal-card {
             background-color: #F8F9FA;
             padding: 20px;
-            border-radius: 12px;
-            border-left: 5px solid #8B4513;
+            border-radius: 15px;
+            border-top: 4px solid #8B4513;
             margin-bottom: 10px;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        
+        .price-tag {
+            color: #8B4513;
+            font-size: 1.4rem;
+            font-weight: bold;
         }
 
-        /* Input Box Visibility */
+        /* Status Badge */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            background-color: #FFE4B5;
+            color: #8B4513;
+        }
+
         input {
             color: #000000 !important;
             background-color: #F0F2F6 !important;
             border: 2px solid #8B4513 !important;
         }
 
-        /* Button Styling */
         div.stButton > button {
             background-color: #8B4513 !important;
             color: #FFFFFF !important;
-            border-radius: 8px;
+            border-radius: 20px;
             font-weight: bold;
             transition: 0.3s;
+            width: 100%;
         }
         
         div.stButton > button:hover {
             background-color: #A0522D !important;
-            border: 1px solid #8B4513 !important;
+            transform: scale(1.02);
         }
         </style>
     """, unsafe_allow_html=True)
@@ -57,56 +71,74 @@ def apply_theme():
 # --- 2. DATA INITIALIZATION ---
 def init_data():
     if 'items' not in st.session_state:
-        # Default starting items
+        # Default starting items with mock coordinates (Lat, Lon)
         st.session_state.items = {
-            "Refrigerator": {"desc": "Double door, 250L", "price": 25000},
-            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000},
-            "Microwave Oven": {"desc": "Convection, 20L", "price": 8500}
+            "Refrigerator": {"desc": "Double door, 250L", "price": 25000, "loc": (18.5204, 73.8567), "trend": "🔥 Hot Deal"},
+            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000, "loc": (18.5300, 73.8600), "trend": "📉 Price Drop"},
+            "Microwave Oven": {"desc": "Convection, 20L", "price": 8500, "loc": (18.5100, 73.8400), "trend": "✨ New Arrival"}
         }
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
-    if 'username' not in st.session_state:
-        st.session_state.username = ""
+    if 'user_location' not in st.session_state:
+        # Default mock user location (e.g., Central Pune)
+        st.session_state.user_location = (18.5204, 73.8567)
 
 # --- 3. UI PAGES ---
 
 def admin_page():
     st.title("📦 Inventory Manager")
-    st.info("Upload a CSV file to add multiple items at once.")
     
-    # CSV Uploader
-    uploaded_file = st.file_uploader("Choose a CSV file (Columns: name, desc, price)", type="csv")
+    with st.expander("💡 CSV Format Instructions"):
+        st.write("Your CSV should have these columns: `name`, `desc`, `price`, `lat`, `lon`")
+
+    uploaded_file = st.file_uploader("Bulk Upload via CSV", type="csv")
     if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file)
             for _, row in df.iterrows():
                 st.session_state.items[row['name']] = {
                     "desc": row['desc'], 
-                    "price": row['price']
+                    "price": row['price'],
+                    "loc": (row['lat'], row['lon']),
+                    "trend": "📦 Bulk Stock"
                 }
-            st.success(f"Successfully imported {len(df)} items!")
+            st.success(f"Imported {len(df)} items!")
         except Exception as e:
-            st.error(f"Error reading CSV: {e}")
+            st.error(f"Error: {e}")
 
     st.divider()
     st.subheader("Add Single Item")
     with st.form("manual_add"):
-        name = st.text_input("Product Name")
+        c1, c2 = st.columns(2)
+        name = c1.text_input("Product Name")
+        price = c2.number_input("Price (₹)", min_value=0)
         desc = st.text_area("Description")
-        price = st.number_input("Price (₹)", min_value=0)
+        
+        st.write("Set Shop Location (Mock Coordinates)")
+        lat = st.number_input("Latitude", value=18.52, format="%.4f")
+        lon = st.number_input("Longitude", value=73.85, format="%.4f")
+        
         if st.form_submit_button("Add to Catalog"):
-            st.session_state.items[name] = {"desc": desc, "price": price}
-            st.toast(f"Added {name}!")
+            if name:
+                st.session_state.items[name] = {
+                    "desc": desc, 
+                    "price": price, 
+                    "loc": (lat, lon),
+                    "trend": "🆕 Just Added"
+                }
+                st.toast(f"Success! {name} is now live.")
 
 def home_page():
-    st.title("✨ LowKey Deals")
-    st.markdown("### *Highkey savings on local appliances.*")
-    
-    # Safety check for the AttributeError you saw
-    if 'items' not in st.session_state:
-        init_data()
+    # Hero Section
+    col_title, col_loc = st.columns([3, 1])
+    with col_title:
+        st.title("✨ LowKey Deals")
+        st.markdown("### *Highkey savings on local appliances.*")
+    with col_loc:
+        st.caption("📍 Current Location")
+        st.code("Pune, MH (Mock)")
 
-    # Search Logic
+    # Search Section
     search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Fridge'...", key="main_search")
     
     if search_input:
@@ -126,16 +158,27 @@ def home_page():
         item_name = st.session_state.selected_item
         item = st.session_state.items[item_name]
         
-        c1, c2 = st.columns(2)
+        # Calculate Distance
+        dist = geodesic(st.session_state.user_location, item['loc']).km
+
+        c1, c2 = st.columns([1, 1])
         with c1:
-            st.image("https://via.placeholder.com/400x300.png?text=Product+Image", use_container_width=True)
+            st.image(f"https://loremflickr.com/400/300/appliance,{item_name.lower().replace(' ', '')}", use_container_width=True)
         with c2:
-            st.subheader(item_name)
+            st.markdown(f"<span class='badge'>{item['trend']}</span>", unsafe_allow_html=True)
+            st.header(item_name)
             st.write(item['desc'])
-            st.metric("Price", f"₹{item['price']:,}")
-            if st.button("Reserve Deal"):
+            st.metric("Best Price", f"₹{item['price']:,}")
+            st.write(f"📍 Location: **{dist:.1f} km away**")
+            
+            if st.button("Reserve This Deal"):
+                with st.status("Verifying stock with seller..."):
+                    st.write("Checking availability...")
+                    st.write("Generating coupon code...")
                 st.balloons()
-            if st.button("Back to Browse"):
+                st.success(f"Success! Show code **LOWKEY-{item_name[:3].upper()}** at the shop.")
+            
+            if st.button("⬅️ Back to Browse"):
                 del st.session_state.selected_item
                 st.rerun()
     else:
@@ -143,28 +186,24 @@ def home_page():
         items = st.session_state.items
         cols = st.columns(3)
         for i, (name, info) in enumerate(items.items()):
+            # Calculate distance for each card
+            dist = geodesic(st.session_state.user_location, info['loc']).km
+            
             with cols[i % 3]:
                 st.markdown(f"""
                 <div class="deal-card">
-                    <h4>{name}</h4>
-                    <p style="font-size: 0.9rem;">{info['desc']}</p>
-                    <p style="font-weight: bold; font-size: 1.1rem;">₹{info['price']:,}</p>
+                    <span class="badge">{info['trend']}</span>
+                    <h4 style="margin-top:10px;">{name}</h4>
+                    <p style="font-size: 0.85rem; color: #555;">{info['desc']}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="price-tag">₹{info['price']:,}</span>
+                        <span style="font-size: 0.8rem; color: #888;">📍 {dist:.1f}km</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button(f"Details: {name}", key=f"btn_{name}"):
+                if st.button(f"View Details", key=f"btn_{name}"):
                     st.session_state.selected_item = name
                     st.rerun()
-
-def login_page():
-    st.title("Welcome to LowKey Deals")
-    role = st.radio("Select Role", ["User", "Seller"], key="role_selection")
-    user = st.text_input("Username")
-    if st.button("Login"):
-        if user:
-            st.session_state.authenticated = True
-            st.session_state.username = user
-            st.session_state.role = role
-            st.rerun()
 
 # --- 4. EXECUTION FLOW ---
 apply_theme()
@@ -175,12 +214,12 @@ if not st.session_state.authenticated:
 else:
     with st.sidebar:
         st.markdown(f"### Welcome, {st.session_state.username}")
-        # Navigation based on Role
         if st.session_state.role == "Seller":
             nav = st.radio("Dashboard", ["View Store", "Manage Inventory"])
         else:
             nav = "View Store"
             
+        st.divider()
         if st.button("Logout"):
             st.session_state.authenticated = False
             st.rerun()
