@@ -4,6 +4,7 @@ import difflib
 from geopy.distance import geodesic
 from datetime import datetime
 import streamlit.components.v1 as components
+import calendar
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="LowKey Deals", layout="wide", page_icon="✨")
@@ -87,7 +88,8 @@ def init_data():
                     "is_sale": False,
                     "desc": "Double door, 250L",
                     "reviews": [{"user": "user1", "rating": 4, "text": "Good product"}],
-                    "open_hours": (9, 21)
+                    "open_hours": (9, 21),
+                    "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
                 },
                 {
                     "store": "Home Mart",
@@ -98,7 +100,8 @@ def init_data():
                     "is_sale": True,
                     "desc": "Double door, 260L",
                     "reviews": [],
-                    "open_hours": (10, 22)
+                    "open_hours": (10, 22),
+                    "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 }
             ],
             "Washing Machine": [
@@ -111,7 +114,8 @@ def init_data():
                     "is_sale": False,
                     "desc": "Front load, 7kg",
                     "reviews": [],
-                    "open_hours": (9, 21)
+                    "open_hours": (9, 21),
+                    "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
                 },
                 {
                     "store": "Home Mart",
@@ -122,7 +126,8 @@ def init_data():
                     "is_sale": False,
                     "desc": "Front load, 6kg",
                     "reviews": [{"user": "user1", "rating": 5, "text": "Excellent"}],
-                    "open_hours": (10, 22)
+                    "open_hours": (10, 22),
+                    "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 }
             ]
         }
@@ -135,6 +140,7 @@ def init_data():
                 "store_name": "Appliance World",
                 "loc": (9.95, 76.29),
                 "open_hours": (9, 21),
+                "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
                 "address": "123 Kochi St, Kerala"
             },
             "seller2": {
@@ -142,6 +148,7 @@ def init_data():
                 "store_name": "Home Mart",
                 "loc": (9.93, 76.27),
                 "open_hours": (10, 22),
+                "open_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
                 "address": "456 Ernakulam Rd, Kerala"
             }
         }
@@ -177,10 +184,12 @@ def admin_page():
                     "is_sale": is_sale,
                     "desc": desc,
                     "reviews": [],  # Reviews not from CSV
-                    "open_hours": store_info["open_hours"]
+                    "open_hours": store_info["open_hours"],
+                    "open_days": store_info["open_days"]
                 }
                 if name not in st.session_state.item_offers:
                     st.session_state.item_offers[name] = []
+                # Update if exists for this store, else append
                 updated = False
                 for idx, o in enumerate(st.session_state.item_offers[name]):
                     if o["store"] == offer["store"]:
@@ -214,10 +223,12 @@ def admin_page():
                     "is_sale": is_sale,
                     "desc": desc,
                     "reviews": [],
-                    "open_hours": store_info["open_hours"]
+                    "open_hours": store_info["open_hours"],
+                    "open_days": store_info["open_days"]
                 }
                 if name not in st.session_state.item_offers:
                     st.session_state.item_offers[name] = []
+                # Update if exists, else append
                 updated = False
                 for idx, o in enumerate(st.session_state.item_offers[name]):
                     if o["store"] == offer["store"]:
@@ -295,7 +306,7 @@ def home_page():
     sales_items = []
     for item_name, offers in st.session_state.item_offers.items():
         for o in offers:
-            if o.get("is_sale", False):
+            if o["is_sale"]:
                 sales_items.append((item_name, o))
     if sales_items:
         cols = st.columns(3)
@@ -340,56 +351,72 @@ def home_page():
         if offers:
             st.header(f"🛍️ {item_name}")
             user_loc = st.session_state.user_location
-            current_hour = datetime.now().hour
+            current_time = datetime.now()
+            current_hour = current_time.hour
+            current_day = current_time.strftime("%A")
             annotated_offers = []
-            prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
-            min_price = min(prices) if prices else 0
-            max_price = max(prices) if prices else 0
-            lowest_store = next((o["store"] for o in offers if (o["sale_price"] if o.get("is_sale", False) else o["price"]) == min_price), None)
-            if lowest_store:
-                st.info(f"Lowest price at: {lowest_store} (₹{min_price:,}) 💰")
+            prices = [o["sale_price"] if o["is_sale"] else o["price"] for o in offers]
+            min_price = min(prices)
+            max_price = max(prices)
+            lowest_store = next(o["store"] for o in offers if (o["sale_price"] if o["is_sale"] else o["price"]) == min_price)
+            st.info(f"Lowest price at: {lowest_store} (₹{min_price:,}) 💰")
             for o in offers:
                 dist = geodesic(user_loc, o["loc"]).km
-                reviews = o.get("reviews", [])
+                reviews = o["reviews"]
                 avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
-                price_for_effort = o["sale_price"] if o.get("is_sale", False) else o["price"]
+                price_for_effort = o["sale_price"] if o["is_sale"] else o["price"]
                 normalized_price = (price_for_effort - min_price) / (max_price - min_price) if max_price > min_price else 0
                 effort = normalized_price * 50 + dist * 0.5 + (5 - avg_rating)
-                is_open = o["open_hours"][0] <= current_hour < o["open_hours"][1]
+                is_open = current_day in o["open_days"] and o["open_hours"][0] <= current_hour < o["open_hours"][1]
                 annotated_offers.append({"offer": o, "dist": dist, "avg_rating": avg_rating, "effort": effort, "is_open": is_open})
             annotated_offers.sort(key=lambda x: x["effort"])
             for ao in annotated_offers:
                 o = ao["offer"]
                 st.subheader(f"🏪 {o['store']}")
                 st.write(f"Address: {o['address']}")
-                price = o["sale_price"] if o.get("is_sale", False) else o["price"]
-                st.metric("Price", f"₹{price:,}" + (" (Sale! 🔥)" if o.get("is_sale", False) else ""))
+                price = o["sale_price"] if o["is_sale"] else o["price"]
+                st.metric("Price", f"₹{price:,}" + (" (Sale! 🔥)" if o["is_sale"] else ""))
                 st.write(f"Distance: {ao['dist']:.1f} km 🚗")
                 st.write(f"Rating: {ao['avg_rating']:.1f} ⭐" if ao['avg_rating'] > 0 else "No ratings yet 😔")
                 status = "Open ✅" if ao["is_open"] else "Closed ❌"
                 st.write(f"Status: {status}")
+                st.write(f"Open Days: {', '.join(o['open_days'])}")
                 st.write(f"Effort Score: {ao['effort']:.2f} (lower is better) 📊")
                 img_url = f"https://loremflickr.com/300/200/appliance,{item_name.lower().replace(' ', '_')}"
                 st.image(img_url, caption=f"Sample {item_name}")
+                # Google Maps Directions Link
                 maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
                 st.markdown(f"[Get Directions on Google Maps 🗺️]({maps_url})")
                 with st.expander("Reviews 📝"):
-                    if o.get("reviews"):
+                    if o["reviews"]:
                         for r in o["reviews"]:
                             st.write(f"{r['user']}: {r['rating']} ⭐ - {r['text']}")
                     else:
                         st.write("No reviews yet. Be the first! ✍️")
                 if st.session_state.role == "User":
                     with st.form(key=f"review_form_{o['store']}_{item_name}"):
-                        rating = st.slider("Your Rating", 1, 5, 3)
+                        st.write("Your Rating")
+                        rating_options = ["1 ⭐", "2 ⭐⭐", "3 ⭐⭐⭐", "4 ⭐⭐⭐⭐", "5 ⭐⭐⭐⭐⭐"]
+                        rating_str = st.radio("", rating_options, horizontal=True)
+                        rating = int(rating_str[0])  # Extract number
                         text = st.text_area("Your Review")
                         if st.form_submit_button("Submit Review"):
                             o["reviews"].append({"user": st.session_state.username, "rating": rating, "text": text})
                             st.success("Review added! Thank you! 🎉")
                             st.rerun()
+                    with st.form(key=f"buy_form_{o['store']}_{item_name}"):
+                        st.write("Buy and Report Price")
+                        bought_price = st.number_input("Price You Paid (₹)", min_value=0.0)
+                        bill_upload = st.file_uploader("Upload Bill (for verification)", type=["jpg", "png", "pdf"])
+                        if st.form_submit_button("Submit Purchase"):
+                            if bought_price > 0 and bill_upload:
+                                # Mock verification
+                                st.success("Purchase reported and bill verified! Price updated.")
+                                o["price"] = bought_price  # Update price (mock)
+                            else:
+                                st.error("Please enter price and upload bill.")
             if st.button("⬅️ Back to Browse"):
-                if 'selected_item' in st.session_state:
-                    del st.session_state.selected_item
+                del st.session_state.selected_item
                 st.rerun()
         else:
             st.warning("No offers available for this item. 😕")
@@ -404,9 +431,9 @@ def home_page():
             user_loc = st.session_state.user_location
             for i, name in enumerate(all_items):
                 offers = st.session_state.item_offers[name]
-                prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
-                min_price = min(prices) if prices else 0
-                min_dist = min(geodesic(user_loc, o["loc"]).km for o in offers) if offers else 0
+                prices = [o["sale_price"] if o["is_sale"] else o["price"] for o in offers]
+                min_price = min(prices)
+                min_dist = min(geodesic(user_loc, o["loc"]).km for o in offers)
                 with cols[i % 3]:
                     st.markdown(f"""
                     <div class="deal-card">
@@ -461,6 +488,7 @@ def auth_page():
             lon = st.number_input("Store Longitude", value=76.27)
             open_from = st.number_input("Opening Hour (0-23)", min_value=0, max_value=23, value=9)
             open_to = st.number_input("Closing Hour (0-23)", min_value=0, max_value=23, value=21)
+            open_days = st.multiselect("Open Days", list(calendar.day_name), default=list(calendar.day_name)[:-1])
         if st.button("Sign Up"):
             if username and password:
                 if role == "User":
@@ -472,14 +500,15 @@ def auth_page():
                 elif role == "Seller":
                     if username in st.session_state.sellers:
                         st.error("Username already exists.")
-                    elif not (store_name and address):
-                        st.error("Store name and address are required.")
+                    elif not (store_name and address and open_days):
+                        st.error("Store name, address, and open days are required.")
                     else:
                         st.session_state.sellers[username] = {
                             "password": password,
                             "store_name": store_name,
                             "loc": (lat, lon),
                             "open_hours": (open_from, open_to),
+                            "open_days": open_days,
                             "address": address
                         }
                         st.success("Seller signed up! Please login.")
