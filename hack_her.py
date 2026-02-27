@@ -76,18 +76,6 @@ def apply_theme():
             background: #A0522D !important;
             transform: scale(1.04);
         }
-        .delete-btn {
-            background: #c0392b !important;
-        }
-        .delete-btn:hover {
-            background: #a93226 !important;
-        }
-        .directions-btn {
-            background: #1e90ff !important;
-        }
-        .directions-btn:hover {
-            background: #187de4 !important;
-        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -301,43 +289,60 @@ def home_page():
     st.title("✨ LowKey Deals")
     st.caption("Discover the best local appliance prices near you")
 
-    # Location section — only for regular users
+    # ───── Location selector ───── only for users
     if st.session_state.get("role") == "User":
         st.subheader("📍 Your Location")
 
         components.html("""
-            <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
-                Get my location
+            <button id="getLocBtn" style="background:#8B4513;color:white;padding:12px 24px;border:none;border-radius:999px;cursor:pointer;font-weight:bold;">
+                Get My Location
             </button>
+
+            <div id="locStatus" style="margin-top:10px;color:#555;font-size:0.95rem;"></div>
+
             <script>
-            function getLocation() {
+            document.getElementById("getLocBtn").onclick = function() {
+                const status = document.getElementById("locStatus");
+                status.innerHTML = "Requesting location... Please allow access when prompted.";
+
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
-                        pos => {
-                            const lat = pos.coords.latitude;
-                            const lon = pos.coords.longitude;
+                        (position) => {
+                            const lat = position.coords.latitude.toFixed(6);
+                            const lon = position.coords.longitude.toFixed(6);
+                            status.innerHTML = "Location acquired! Updating page...";
                             const url = new URL(window.location);
                             url.searchParams.set('lat', lat);
                             url.searchParams.set('lon', lon);
                             window.location = url;
                         },
-                        err => {
+                        (error) => {
                             let msg = "Could not get location.";
-                            if (err.code === 1) msg = "Location permission denied.";
-                            if (err.code === 2) msg = "Position unavailable.";
-                            if (err.code === 3) msg = "Location request timed out.";
-                            alert(msg + "\\nPlease enable location in your browser/device settings.");
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    msg = "Location permission denied. Please allow access in your browser settings.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    msg = "Location information is unavailable.";
+                                    break;
+                                case error.TIMEOUT:
+                                    msg = "Location request timed out.";
+                                    break;
+                            }
+                            status.innerHTML = msg;
+                            alert(msg + "\\nMake sure location services are enabled on your device.");
                         },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                     );
                 } else {
-                    alert("Geolocation is not supported by your browser.");
+                    status.innerHTML = "Geolocation is not supported by your browser.";
+                    alert("Your browser does not support geolocation.");
                 }
-            }
+            };
             </script>
-        """, height=70)
+        """, height=140)
 
-        # Read coordinates from URL params after redirect
+        # Read location from URL params after redirect
         q = st.query_params
         if 'lat' in q and 'lon' in q:
             try:
@@ -346,14 +351,14 @@ def home_page():
                 st.session_state.user_location = (lat, lon)
                 st.success(f"Location updated: {lat:.6f}, {lon:.6f}")
             except:
-                st.warning("Could not read location from URL.")
+                st.warning("Could not parse location from URL.")
 
         with st.expander("Or set location manually"):
             lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
             lon = st.number_input("Longitude", value=st.session_state.user_location[1], step=0.00001, format="%.6f")
             if st.button("Save"):
                 st.session_state.user_location = (lat, lon)
-                st.success("Manual location saved.")
+                st.success("Manual location saved!")
                 st.rerun()
 
         st.divider()
