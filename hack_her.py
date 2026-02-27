@@ -70,6 +70,7 @@ def apply_theme():
             font-weight: 600;
             padding: 0.6rem 1.4rem !important;
             transition: all 0.2s;
+            width: 100%;
         }
         div.stButton > button:hover {
             background: #A0522D !important;
@@ -77,10 +78,15 @@ def apply_theme():
         }
         .delete-btn {
             background: #c0392b !important;
-            color: white !important;
         }
         .delete-btn:hover {
             background: #a93226 !important;
+        }
+        .directions-btn {
+            background: #1e90ff !important;
+        }
+        .directions-btn:hover {
+            background: #187de4 !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -122,7 +128,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY (now with delete option)
+# SELLER — MANAGE INVENTORY (with delete + price update)
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -239,7 +245,7 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # ───── My Products – Delete option ─────
+    # ───── My Products – Delete & Update Price ─────
     st.divider()
     st.subheader("My Added Products")
 
@@ -259,18 +265,33 @@ def admin_page():
             name = item["product_name"]
             o = item["offer"]
 
-            cols = st.columns([5,1])
+            cols = st.columns([4, 1, 1])
             with cols[0]:
-                st.markdown(f"**{name}** — {o['store']} — ₹{o.get('sale_price') or o['price']:,}")
+                st.markdown(f"**{name}** — ₹{o.get('sale_price') or o['price']:,}")
             with cols[1]:
-                delete_key = f"delete_{name}_{current_user}"
-                if st.button("🗑️ Delete", key=delete_key, type="primary", help="Remove this product from your catalog"):
-                    # Remove only this seller's entry for this product
+                # Price update button & mini-form
+                if st.button("✏️ Update Price", key=f"update_price_{name}_{current_user}"):
+                    with st.form(key=f"price_update_{name}_{current_user}"):
+                        new_price = st.number_input("New regular price (₹)", value=float(o["price"]), min_value=0.0, step=100.0)
+                        new_sale_price = st.number_input("New sale price (optional)", value=float(o.get("sale_price") or 0), min_value=0.0, step=100.0)
+                        if st.form_submit_button("Save New Prices"):
+                            o["price"] = new_price
+                            if new_sale_price > 0 and new_sale_price < new_price:
+                                o["sale_price"] = new_sale_price
+                                o["is_sale"] = True
+                            else:
+                                o["sale_price"] = None
+                                o["is_sale"] = False
+                            st.success(f"Price updated for **{name}**")
+                            st.rerun()
+
+            with cols[2]:
+                # Delete button
+                if st.button("🗑️ Delete", key=f"delete_{name}_{current_user}", type="primary", help="Remove this product"):
                     GLOBAL_CATALOG[name] = [
                         ex for ex in GLOBAL_CATALOG[name]
                         if ex.get("seller_username") != current_user
                     ]
-                    # If no offers left for this product → remove the key
                     if not GLOBAL_CATALOG[name]:
                         del GLOBAL_CATALOG[name]
                     st.success(f"Product **{name}** deleted.")
@@ -426,8 +447,10 @@ def home_page():
                 img_url = f"https://loremflickr.com/320/180/appliance,{item_name.lower().replace(' ','_')}"
                 st.image(img_url, use_column_width=True)
 
+                # Changed from link → button
                 maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
-                st.markdown(f"[🗺️ Get Directions]({maps_url})")
+                if st.button("Get Directions on Google Maps 🗺️", key=f"directions_{o['store']}_{item_name}", type="primary"):
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={maps_url}">', unsafe_allow_html=True)
 
                 with st.expander("Reviews 📝"):
                     if o.get("reviews"):
