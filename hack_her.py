@@ -129,8 +129,8 @@ def admin_page():
                 st.toast(f"Success! {name} is now live.")
 
 def home_page():
-    # --- STEP 1: SAFETY CHECK ---
-    # Re-build data if it vanished during a refresh
+    # --- STEP 1: SAFETY INITIALIZATION ---
+    # If the app reruns and state is lost, this forces a rebuild
     if 'items' not in st.session_state or not isinstance(st.session_state.items, dict):
         init_data()
 
@@ -146,10 +146,12 @@ def home_page():
     # --- STEP 3: SEARCH LOGIC ---
     search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Fridge'...", key="main_search")
     
+    # Use .get() to avoid crashing if state flickers
+    catalog = st.session_state.get('items', {})
+    
     if search_input:
-        current_items = st.session_state.get('items', {})
-        all_items = list(current_items.keys())
-        suggestions = difflib.get_close_matches(search_input, all_items, n=3, cutoff=0.3)
+        all_items_list = list(catalog.keys())
+        suggestions = difflib.get_close_matches(search_input, all_items_list, n=3, cutoff=0.3)
         
         if suggestions:
             st.write("Did you mean:")
@@ -161,6 +163,53 @@ def home_page():
 
     st.divider()
     
+    # --- STEP 4: DISPLAY LOGIC (FIXES THE ATTRIBUTEERROR) ---
+    if 'selected_item' in st.session_state and st.session_state.selected_item in catalog:
+        # DETAIL VIEW
+        item_name = st.session_state.selected_item
+        item_info = catalog[item_name]
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            img_url = f"https://loremflickr.com/400/300/appliance,{item_name.lower()}"
+            st.image(img_url, use_container_width=True)
+        with c2:
+            st.header(item_name)
+            st.write(item_info.get('desc', 'Quality deal!'))
+            st.metric("Price", f"₹{item_info.get('price', 0):,}")
+            
+            # Distance logic using geopy
+            if 'loc' in item_info:
+                dist = geodesic(st.session_state.user_location, item_info['loc']).km
+                st.write(f"📍 **{dist:.1f} km** away from you")
+
+            if st.button("Reserve Deal"):
+                st.balloons()
+                st.success("Deal Reserved! Show this to the seller.")
+            
+            if st.button("⬅️ Back to Browse"):
+                del st.session_state.selected_item
+                st.rerun()
+    else:
+        # GRID VIEW - This is where your original error was located
+        if not catalog:
+            st.warning("Lowkey... the catalog is empty. Sellers, please add some items!")
+        else:
+            st.subheader("Featured Deals")
+            cols = st.columns(3)
+            # We use catalog.items() on the safe dictionary we fetched earlier
+            for i, (name, info) in enumerate(catalog.items()):
+                with cols[i % 3]:
+                    st.markdown(f"""
+                    <div class="deal-card">
+                        <h4 style="margin:0;">{name}</h4>
+                        <p style="font-size: 0.8rem; color: #555;">{info.get('desc', '')[:50]}...</p>
+                        <p style="font-weight: bold; color: #8B4513;">₹{info.get('price', 0):,}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"View {name}", key=f"btn_{name}"):
+                        st.session_state.selected_item = name
+                        st.rerun()
     # --- STEP 4: DISPLAY DETAILS OR GRID ---
     if 'selected_item' in st.session_state and st.session_state.selected_item in st.session_state.items:
         # DETAIL VIEW
