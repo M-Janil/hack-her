@@ -1,82 +1,86 @@
 import streamlit as st
+import pandas as pd
 import difflib
 from geopy.distance import geodesic
 from datetime import datetime
+import streamlit.components.v1 as components
 import calendar
 
+# ────────────────────────────────────────────────
+# CONFIGURATION & SHARED CATALOG
+# ────────────────────────────────────────────────
 st.set_page_config(page_title="LowKey Deals", layout="wide", page_icon="✨")
 
-# ==========================================================
-# THEME
-# ==========================================================
-def apply_theme():
-    st.markdown("""
-    <style>
-    .deal-card {
-        background:#FFF;
-        padding:20px;
-        border-radius:15px;
-        border-top:4px solid #8B4513;
-        margin-bottom:15px;
-        box-shadow:0 4px 8px rgba(0,0,0,0.05);
-        transition:0.3s;
-    }
-    .deal-card:hover {
-        transform:translateY(-5px);
-        box-shadow:0 8px 14px rgba(0,0,0,0.1);
-    }
-    .price-tag { color:#8B4513; font-weight:bold; font-size:1.2rem; }
-    div.stButton > button {
-        background:#8B4513 !important;
-        color:white !important;
-        border-radius:20px;
-        font-weight:bold;
-        width:100%;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ==========================================================
-# GLOBAL SHARED CATALOG
-# ==========================================================
 @st.cache_resource
-def get_global_catalog():
+def get_shared_catalog():
     return {}
 
-GLOBAL_CATALOG = get_global_catalog()
+GLOBAL_CATALOG = get_shared_catalog()
 
-def add_or_update_offer(product_name, offer):
-    if product_name not in GLOBAL_CATALOG:
-        GLOBAL_CATALOG[product_name] = []
+def apply_theme():
+    st.markdown("""
+        <style>
+        html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label, span, .stRadio p {
+            color: #000000 !important;
+            font-weight: 500;
+        }
+        .stApp { background-color: #FFFFFF; }
+        .deal-card {
+            background-color: #FFFFFF;
+            padding: 20px;
+            border-radius: 15px;
+            border-top: 4px solid #8B4513;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            transition: all 0.25s ease;
+        }
+        .deal-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+        }
+        .price-tag {
+            color: #8B4513;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .badge {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: #FFE4B5;
+            color: #8B4513;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,100% { transform: scale(1); }
+            50%     { transform: scale(1.04); }
+        }
+        input, textarea {
+            color: #000 !important;
+            background: #fff !important;
+            border: 2px solid #8B4513 !important;
+            border-radius: 8px !important;
+        }
+        div.stButton > button {
+            background: #8B4513 !important;
+            color: white !important;
+            border-radius: 999px !important;
+            font-weight: 600;
+            padding: 0.6rem 1.4rem !important;
+            transition: all 0.2s;
+        }
+        div.stButton > button:hover {
+            background: #A0522D !important;
+            transform: scale(1.04);
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    updated = False
-    for i, existing in enumerate(GLOBAL_CATALOG[product_name]):
-        if existing["seller_username"] == offer["seller_username"]:
-            GLOBAL_CATALOG[product_name][i] = offer
-            updated = True
-            break
-
-    if not updated:
-        GLOBAL_CATALOG[product_name].append(offer)
-
-def sync_seller_store_updates(username):
-    if username not in st.session_state.sellers:
-        return
-
-    store = st.session_state.sellers[username]
-
-    for product, offers in GLOBAL_CATALOG.items():
-        for offer in offers:
-            if offer["seller_username"] == username:
-                offer["store"] = store["store_name"]
-                offer["address"] = store["address"]
-                offer["loc"] = store["loc"]
-                offer["open_hours"] = store["open_hours"]
-                offer["open_days"] = store["open_days"]
-
-# ==========================================================
-# INITIAL DATA
-# ==========================================================
+# ────────────────────────────────────────────────
+# INITIAL DATA SETUP
+# ────────────────────────────────────────────────
 def init_data():
     if "users" not in st.session_state:
         st.session_state.users = {"user1": "pass1"}
@@ -88,8 +92,16 @@ def init_data():
                 "store_name": "Appliance World",
                 "loc": (9.95, 76.29),
                 "open_hours": (9, 21),
-                "open_days": list(calendar.day_name),
+                "open_days": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
                 "address": "123 Kochi St, Kerala"
+            },
+            "seller2": {
+                "password": "pass2",
+                "store_name": "Home Mart",
+                "loc": (9.93, 76.27),
+                "open_hours": (10, 22),
+                "open_days": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+                "address": "456 Ernakulam Rd, Kerala"
             }
         }
 
@@ -97,61 +109,100 @@ def init_data():
         st.session_state.authenticated = False
 
     if "user_location" not in st.session_state:
-        st.session_state.user_location = (9.9312, 76.2673)
+        st.session_state.user_location = (9.9312, 76.2673)  # default Kochi
 
-# ==========================================================
-# SELLER PAGE
-# ==========================================================
-def seller_page():
+    if "role" not in st.session_state:
+        st.session_state.role = None
+
+# ────────────────────────────────────────────────
+# SELLER — MANAGE INVENTORY PAGE
+# ────────────────────────────────────────────────
+def admin_page():
     st.title("📦 Manage Inventory")
 
+    if 'store_info' not in st.session_state or not st.session_state.store_info:
+        st.error("Store information missing. Please log out and log in again.")
+        return
+
     store = st.session_state.store_info
+    st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
 
-    st.subheader("Update Store Info")
+    # ───── CSV Bulk Upload ─────
+    with st.expander("Bulk upload via CSV", expanded=False):
+        st.caption("Columns: name, desc, price, sale_price (optional)")
+        uploaded = st.file_uploader("Choose CSV file", type="csv", key="csv_upload")
 
-    with st.form("update_store"):
-        store_name = st.text_input("Store Name", value=store["store_name"])
-        address = st.text_input("Address", value=store["address"])
-        lat = st.number_input("Latitude", value=store["loc"][0])
-        lon = st.number_input("Longitude", value=store["loc"][1])
-        open_hour = st.number_input("Opens at", 0, 23, store["open_hours"][0])
-        close_hour = st.number_input("Closes at", 0, 23, store["open_hours"][1])
-        open_days = st.multiselect(
-            "Open Days",
-            list(calendar.day_name),
-            default=store["open_days"]
-        )
+        if uploaded:
+            try:
+                df = pd.read_csv(uploaded)
+                count = 0
+                for _, row in df.iterrows():
+                    raw_name = str(row.get("name", "")).strip()
+                    if not raw_name:
+                        continue
+                    name = raw_name.strip()
 
-        if st.form_submit_button("Update Store Info"):
-            st.session_state.sellers[st.session_state.username] = {
-                "password": store["password"],
-                "store_name": store_name,
-                "address": address,
-                "loc": (lat, lon),
-                "open_hours": (open_hour, close_hour),
-                "open_days": open_days
-            }
+                    price = float(row.get("price", 0))
+                    sale_price_val = float(row.get("sale_price", 0))
+                    is_sale = sale_price_val > 0 and sale_price_val < price
 
-            st.session_state.store_info = st.session_state.sellers[st.session_state.username]
-            sync_seller_store_updates(st.session_state.username)
+                    offer = {
+                        "seller_username": st.session_state.username,
+                        "store": store["store_name"],
+                        "address": store["address"],
+                        "loc": store["loc"],
+                        "price": price,
+                        "sale_price": sale_price_val if is_sale else None,
+                        "is_sale": is_sale,
+                        "desc": str(row.get("desc", "")).strip(),
+                        "reviews": [],
+                        "open_hours": store["open_hours"],
+                        "open_days": store["open_days"]
+                    }
 
-            st.success("Store info updated and synced!")
+                    if name not in GLOBAL_CATALOG:
+                        GLOBAL_CATALOG[name] = []
+
+                    # Replace only own previous entry (same seller)
+                    replaced = False
+                    for i, ex in enumerate(GLOBAL_CATALOG[name]):
+                        if ex.get("seller_username") == st.session_state.username:
+                            GLOBAL_CATALOG[name][i] = offer
+                            replaced = True
+                            break
+                    if not replaced:
+                        GLOBAL_CATALOG[name].append(offer)
+
+                    count += 1
+
+                if count > 0:
+                    st.success(f"Processed {count} item{'s' if count != 1 else ''}")
+                    st.rerun()
+                else:
+                    st.info("No valid items found in CSV")
+
+            except Exception as e:
+                st.error(f"CSV processing error: {e}")
 
     st.divider()
-    st.subheader("Add / Update Product")
 
-    with st.form("add_product"):
-        name = st.text_input("Product Name")
-        desc = st.text_area("Description")
-        price = st.number_input("Regular Price (₹)", min_value=0.0)
-        sale_price = st.number_input("Sale Price (₹ optional)", min_value=0.0)
+    # ───── Single item form ─────
+    st.subheader("Add or update single product")
 
-        if st.form_submit_button("Add / Update Product"):
-            if not name:
-                st.error("Product name required")
-                return
+    with st.form("single_item_form"):
+        c1, c2 = st.columns([3,2])
+        raw_name = c1.text_input("Product name", placeholder="e.g. Samsung Double Door Refrigerator")
+        price     = c2.number_input("Regular price (₹)", min_value=0.0, step=100.0)
+        sale_price_input = c2.number_input("Sale price (optional)", min_value=0.0, step=100.0)
 
-            is_sale = sale_price > 0 and sale_price < price
+        description = st.text_area("Description", height=110)
+
+        submitted = st.form_submit_button("Save Product", use_container_width=True)
+
+        if submitted and raw_name.strip():
+            name = raw_name.strip()
+
+            is_sale = sale_price_input > 0 and sale_price_input < price
 
             offer = {
                 "seller_username": st.session_state.username,
@@ -159,99 +210,330 @@ def seller_page():
                 "address": store["address"],
                 "loc": store["loc"],
                 "price": price,
-                "sale_price": sale_price if is_sale else None,
+                "sale_price": sale_price_input if is_sale else None,
                 "is_sale": is_sale,
-                "desc": desc,
+                "desc": description.strip(),
                 "reviews": [],
                 "open_hours": store["open_hours"],
                 "open_days": store["open_days"]
             }
 
-            add_or_update_offer(name, offer)
-            sync_seller_store_updates(st.session_state.username)
+            if name not in GLOBAL_CATALOG:
+                GLOBAL_CATALOG[name] = []
 
-            st.success("Product added/updated successfully!")
+            updated = False
+            for i, ex in enumerate(GLOBAL_CATALOG[name]):
+                if ex.get("seller_username") == st.session_state.username:
+                    GLOBAL_CATALOG[name][i] = offer
+                    updated = True
+                    break
+            if not updated:
+                GLOBAL_CATALOG[name].append(offer)
+
+            st.success(f"✓ Product **{raw_name}** saved / updated")
             st.rerun()
+        elif submitted:
+            st.error("Product name is required")
 
-# ==========================================================
-# USER HOME PAGE
-# ==========================================================
-def user_home():
+# ────────────────────────────────────────────────
+# USER — HOME / BROWSING PAGE
+# ────────────────────────────────────────────────
+def home_page():
     st.title("✨ LowKey Deals")
-    st.write("Lowkey the best prices near you 💸")
+    st.caption("Discover the best local appliance prices near you")
 
-    if not GLOBAL_CATALOG:
-        st.info("No products available yet.")
-        return
+    # ───── Location selector ─────
+    st.subheader("📍 Your Location")
+    colA, colB = st.columns([1,3])
 
-    search = st.text_input("🔍 Search Product")
-    items = list(GLOBAL_CATALOG.keys())
+    with colA:
+        components.html("""
+        <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
+            Get my location
+        </button>
+        <script>
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const url = new URL(window.location);
+                    url.searchParams.set('lat', pos.coords.latitude);
+                    url.searchParams.set('lon', pos.coords.longitude);
+                    window.location = url;
+                }, err => alert("Location access denied or unavailable"));
+            } else {
+                alert("Geolocation not supported");
+            }
+        }
+        </script>
+        """, height=70)
 
-    if search:
-        items = difflib.get_close_matches(search, items, n=5, cutoff=0.4)
+    # Read from query params
+    q = st.query_params
+    if 'lat' in q and 'lon' in q:
+        try:
+            lat = float(q['lat'][0])
+            lon = float(q['lon'][0])
+            st.session_state.user_location = (lat, lon)
+            st.success(f"Location updated: {lat:.5f}, {lon:.5f}")
+        except:
+            st.warning("Could not read location from URL")
 
-    for item in items:
-        st.subheader(item)
-        offers = GLOBAL_CATALOG[item]
+    with st.expander("Or set location manually"):
+        lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
+        lon = st.number_input("Longitude", value=st.session_state.user_location[1], step=0.00001, format="%.6f")
+        if st.button("Save manual location"):
+            st.session_state.user_location = (lat, lon)
+            st.success("Location saved!")
 
-        prices = [o["sale_price"] if o["is_sale"] else o["price"] for o in offers]
-        min_price = min(prices)
+    st.divider()
 
-        st.write(f"💰 Starting from ₹{min_price:,}")
+    col_title, col_loc = st.columns([4, 1])
+    with col_title:
+        st.title("✨ LowKey Deals")
+        st.markdown("### Find the best local appliance prices near you 🛒💸")
+    with col_loc:
+        st.caption("📍 Current location")
+        st.code(f"Lat: {st.session_state.user_location[0]:.4f}   Lon: {st.session_state.user_location[1]:.4f}")
 
-        now = datetime.now()
-        hour = now.hour
-        day = now.strftime("%A")
-
+    # ───── Hot sales section ─────
+    st.subheader("🔥 Ongoing Sales")
+    sales_items = []
+    for item_name, offers in GLOBAL_CATALOG.items():
         for o in offers:
+            if o.get("is_sale", False):
+                sales_items.append((item_name, o))
+
+    if sales_items:
+        cols = st.columns(3)
+        for i, (name, o) in enumerate(sales_items):
             dist = geodesic(st.session_state.user_location, o["loc"]).km
-            price = o["sale_price"] if o["is_sale"] else o["price"]
-            is_open = day in o["open_days"] and o["open_hours"][0] <= hour < o["open_hours"][1]
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div class="deal-card">
+                    <span class="badge">Sale 🔥</span>
+                    <h4>{name}</h4>
+                    <p>{o['desc'][:60]}{'...' if len(o['desc']) > 60 else ''}</p>
+                    <del>₹{o['price']:,}</del> <span class="price-tag">₹{o['sale_price']:,}</span>
+                    <div style="font-size:0.85rem;color:#666;margin-top:8px;">≈ {dist:.1f} km</div>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("View Deal", key=f"sale_btn_{i}_{name}"):
+                    st.session_state.selected_item = name
+                    st.rerun()
+    else:
+        st.info("No active sales at the moment. Check back soon! 😊")
 
-            st.markdown(f"""
-            <div class="deal-card">
-                <h4>🏪 {o['store']}</h4>
-                <div class="price-tag">₹{price:,}</div>
-                <p>{o['desc']}</p>
-                <small>📍 {o['address']}</small><br>
-                <small>🚗 {dist:.1f} km away</small><br>
-                <small>{'🟢 Open Now' if is_open else '🔴 Closed'}</small>
-            </div>
-            """, unsafe_allow_html=True)
+    # ───── Search ─────
+    search_term = st.text_input("🔍 Search appliances...", placeholder="e.g. Refrigerator, Washing Machine")
+    if search_term:
+        all_names = list(GLOBAL_CATALOG.keys())
+        suggestions = difflib.get_close_matches(search_term, all_names, n=5, cutoff=0.5)
+        if suggestions:
+            st.write("Did you mean:")
+            cols = st.columns(min(5, len(suggestions)))
+            for i, sug in enumerate(suggestions):
+                if cols[i].button(f"👉 {sug}", key=f"sug_btn_{i}_{sug}"):
+                    st.session_state.selected_item = sug
+                    st.rerun()
 
-# ==========================================================
-# AUTH PAGE
-# ==========================================================
+    st.divider()
+
+    # ───── Selected product detail ─────
+    if 'selected_item' in st.session_state:
+        item_name = st.session_state.selected_item
+        offers = GLOBAL_CATALOG.get(item_name, [])
+
+        if offers:
+            st.header(f"🛍️ {item_name}")
+
+            user_loc = st.session_state.user_location
+            now = datetime.now()
+            current_hour = now.hour
+            current_day = now.strftime("%A")
+
+            prices = [o["sale_price"] if o.get("is_sale") else o["price"] for o in offers]
+            min_price = min(prices) if prices else 0
+            lowest_store = next((o["store"] for o in offers if (o["sale_price"] if o.get("is_sale") else o["price"]) == min_price), "—")
+
+            st.info(f"Lowest price at: **{lowest_store}** (₹{min_price:,}) 💰")
+
+            annotated_offers = []
+            for o in offers:
+                dist = geodesic(user_loc, o["loc"]).km
+                reviews = o.get("reviews", [])
+                avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
+                price_val = o["sale_price"] if o.get("is_sale") else o["price"]
+                price_normalized = (price_val - min_price) / (max(prices) - min_price) if max(prices) > min_price else 0
+                effort = price_normalized * 50 + dist * 0.5 + (5 - avg_rating)
+                is_open = current_day in o["open_days"] and o["open_hours"][0] <= current_hour < o["open_hours"][1]
+
+                annotated_offers.append({
+                    "offer": o,
+                    "dist": dist,
+                    "avg_rating": avg_rating,
+                    "effort": effort,
+                    "is_open": is_open
+                })
+
+            annotated_offers.sort(key=lambda x: x["effort"])
+
+            for entry in annotated_offers:
+                o = entry["offer"]
+                st.subheader(f"🏪 {o['store']}")
+                st.write(f"**Address:** {o['address']}")
+                price_display = f"₹{o['sale_price']:,} (Sale!)" if o.get("is_sale") else f"₹{o['price']:,}"
+                st.metric("Price", price_display)
+                st.write(f"**Distance:** {entry['dist']:.1f} km")
+                st.write(f"**Rating:** {entry['avg_rating']:.1f} ⭐" if entry['avg_rating'] > 0 else "No ratings yet")
+                st.write("**Open now** ✅" if entry["is_open"] else "**Closed** ❌")
+                st.write(f"Open: {', '.join(o['open_days'])}  |  {o['open_hours'][0]}–{o['open_hours'][1]}")
+
+                img_url = f"https://loremflickr.com/320/180/appliance,{item_name.lower().replace(' ','_')}"
+                st.image(img_url, use_column_width=True)
+
+                maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
+                st.markdown(f"[🗺️ Get Directions]({maps_url})")
+
+                with st.expander("Reviews 📝"):
+                    if o.get("reviews"):
+                        for r in o["reviews"]:
+                            st.write(f"**{r['user']}**: {r['rating']} ⭐ – {r['text']}")
+                    else:
+                        st.write("No reviews yet.")
+
+                    if st.session_state.role == "User":
+                        with st.form(key=f"review_form_{o['store']}_{item_name}"):
+                            rating_str = st.radio("Your rating", ["1 ⭐","2 ⭐⭐","3 ⭐⭐⭐","4 ⭐⭐⭐⭐","5 ⭐⭐⭐⭐⭐"], horizontal=True)
+                            rating = int(rating_str[0])
+                            comment = st.text_area("Your comment")
+                            if st.form_submit_button("Submit Review"):
+                                if "reviews" not in o:
+                                    o["reviews"] = []
+                                o["reviews"].append({
+                                    "user": st.session_state.username,
+                                    "rating": rating,
+                                    "text": comment
+                                })
+                                st.success("Review added! Thank you!")
+                                st.rerun()
+
+            if st.button("← Back to browse"):
+                if 'selected_item' in st.session_state:
+                    del st.session_state.selected_item
+                st.rerun()
+
+        else:
+            st.warning("No offers available for this item.")
+
+    else:
+        # ───── Grid view ─────
+        st.subheader("🛒 Available Appliances")
+        all_items = list(GLOBAL_CATALOG.keys())
+        if not all_items:
+            st.info("No products in catalog yet. Sellers can add items in Manage Inventory.")
+        else:
+            cols = st.columns(3)
+            for i, name in enumerate(all_items):
+                offers = GLOBAL_CATALOG[name]
+                prices = [o["sale_price"] if o.get("is_sale") else o["price"] for o in offers]
+                min_p = min(prices) if prices else 0
+                min_d = min(geodesic(st.session_state.user_location, o["loc"]).km for o in offers) if offers else 999
+
+                with cols[i % 3]:
+                    st.markdown(f"""
+                    <div class="deal-card">
+                        <h4>{name}</h4>
+                        <p class="price-tag">From ₹{min_p:,}</p>
+                        <div style="color:#666;font-size:0.9rem;">Closest ≈ {min_d:.1f} km</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if st.button("Compare Prices", key=f"item_btn_{i}_{name}"):
+                        st.session_state.selected_item = name
+                        st.rerun()
+
+# ────────────────────────────────────────────────
+# AUTHENTICATION PAGE
+# ────────────────────────────────────────────────
 def auth_page():
     st.title("Welcome to LowKey Deals")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    role = st.radio("Login As", ["User", "Seller"])
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    with tab_login:
+        role = st.radio("Select Role", ["User", "Seller"], key="login_role")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
 
-    if st.button("Login"):
-        if role == "User":
-            if username in st.session_state.users and st.session_state.users[username] == password:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.session_state.role = "User"
-                st.rerun()
+        if st.button("Login"):
+            if username and password:
+                if role == "User":
+                    if username in st.session_state.users and st.session_state.users[username] == password:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password.")
+                elif role == "Seller":
+                    if username in st.session_state.sellers and st.session_state.sellers[username]["password"] == password:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.session_state.store_info = st.session_state.sellers[username]
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password.")
             else:
-                st.error("Invalid credentials")
+                st.error("Please enter both username and password.")
 
+    with tab_signup:
+        role = st.radio("Sign up as", ["User", "Seller"], key="signup_role")
+        username = st.text_input("Choose username", key="signup_username")
+        password = st.text_input("Choose password", type="password", key="signup_password")
+
+        store_info = {}
         if role == "Seller":
-            if username in st.session_state.sellers and st.session_state.sellers[username]["password"] == password:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.session_state.role = "Seller"
-                st.session_state.store_info = st.session_state.sellers[username]
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
+            store_info["store_name"] = st.text_input("Store Name")
+            store_info["address"] = st.text_input("Store Address")
+            store_info["loc"] = (
+                st.number_input("Store Latitude", value=9.93),
+                st.number_input("Store Longitude", value=76.27)
+            )
+            store_info["open_hours"] = (
+                st.number_input("Opening Hour (0-23)", min_value=0, max_value=23, value=9),
+                st.number_input("Closing Hour (0-23)", min_value=0, max_value=23, value=21)
+            )
+            store_info["open_days"] = st.multiselect(
+                "Open Days",
+                list(calendar.day_name),
+                default=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+            )
 
-# ==========================================================
-# MAIN FLOW
-# ==========================================================
+        if st.button("Sign Up"):
+            if username and password:
+                if role == "User":
+                    if username in st.session_state.users:
+                        st.error("Username already exists.")
+                    else:
+                        st.session_state.users[username] = password
+                        st.success("User account created! Please login.")
+                elif role == "Seller":
+                    if username in st.session_state.sellers:
+                        st.error("Username already exists.")
+                    elif not (store_info.get("store_name") and store_info.get("address") and store_info.get("open_days")):
+                        st.error("Please fill all required store details.")
+                    else:
+                        st.session_state.sellers[username] = {
+                            "password": password,
+                            **store_info
+                        }
+                        st.success("Seller account created! Please login.")
+            else:
+                st.error("Username and password are required.")
+
+# ────────────────────────────────────────────────
+# MAIN APPLICATION FLOW
+# ────────────────────────────────────────────────
 apply_theme()
 init_data()
 
@@ -259,18 +541,21 @@ if not st.session_state.authenticated:
     auth_page()
 else:
     with st.sidebar:
-        st.write(f"Welcome {st.session_state.username} 👋")
+        st.markdown(f"**Welcome, {st.session_state.username}** 👋")
+        st.caption(f"Role: {st.session_state.role}")
 
         if st.session_state.role == "Seller":
-            page = st.radio("Menu", ["Home", "Manage Inventory"])
+            nav = st.radio("Dashboard", ["Home", "Manage Inventory"])
         else:
-            page = "Home"
+            nav = st.radio("Dashboard", ["Home"])
 
+        st.divider()
         if st.button("Logout"):
-            st.session_state.clear()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
 
-    if page == "Manage Inventory":
-        seller_page()
+    if nav == "Manage Inventory" and st.session_state.role == "Seller":
+        admin_page()
     else:
-        user_home()
+        home_page()
