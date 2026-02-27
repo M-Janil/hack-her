@@ -5,149 +5,75 @@ from geopy.distance import geodesic
 from datetime import datetime
 import streamlit.components.v1 as components
 
-# ────────────────────────────────────────────────
-#  PAGE CONFIG & PROFESSIONAL THEME
-# ────────────────────────────────────────────────
-st.set_page_config(page_title="LowKey Deals", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+# --- CONFIGURATION ---
+st.set_page_config(page_title="LowKey Deals", layout="wide", page_icon="✨")
 
-def apply_professional_theme():
+# --- 1. THEME: BROWN, BLACK, WHITE WITH LIVELINESS ---
+def apply_theme():
     st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* ── Global ── */
-        html, body, [data-testid="stAppViewContainer"] {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-            background: #FFFFFF;
-            color: #1F1F1F;
-        }
-        .stApp { background: #FFFFFF !important; }
-
-        /* ── Typography Hierarchy ── */
-        h1, h2, h3, h4 {
-            font-family: 'Playfair Display', serif !important;
-            color: #2C1608;
-            letter-spacing: -0.5px;
-        }
-        h1 { font-size: 3.8rem; font-weight: 700; margin: 0.4rem 0; }
-        h2 { font-size: 2.4rem; font-weight: 600; }
-        h3 { font-size: 1.8rem; font-weight: 600; }
-        p, div, label, span { font-size: 1.05rem; line-height: 1.6; }
-
-        /* ── Hero Section ── */
-        .hero {
-            text-align: center;
-            padding: 4rem 1rem 5rem;
-            background: linear-gradient(135deg, #FFF8F2 0%, #FFFFFF 100%);
-            border-bottom: 1px solid #EDE0D4;
-        }
-        .hero-title {
-            font-size: 5.2rem !important;
-            color: #8B4513;
-            margin: 0;
-            text-shadow: 0 3px 12px rgba(139,69,19,0.15);
-        }
-        .hero-subtitle {
-            font-size: 1.65rem;
-            color: #5A5A5A;
+        <style>
+        /* Global Text & Label Colors */
+        html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label, span, .stRadio p {
+            color: #000000 !important;
             font-weight: 500;
-            margin-top: 0.8rem;
-            max-width: 720px;
-            margin-left: auto;
-            margin-right: auto;
         }
-
-        /* ── Auth Card ── */
-        .auth-card {
-            max-width: 520px;
-            margin: 6rem auto 4rem;
-            padding: 3rem 2.8rem;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 16px 48px rgba(0,0,0,0.08);
-            border: 1px solid #F0E4D9;
-        }
-        .auth-header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-        .auth-header h1 {
-            font-size: 3.2rem;
-            margin: 0 0 0.6rem;
-        }
-        .auth-header p {
-            color: #6B6B6B;
-            font-size: 1.15rem;
-        }
-
-        /* ── Inputs & Buttons ── */
-        input, textarea, [data-testid="stNumberInput"] input, [data-testid="stSelectbox"] > div > div {
-            border: 2px solid #B36F3F !important;
-            border-radius: 12px !important;
-            padding: 0.9rem 1.2rem !important;
-            background: #FFF9F5 !important;
-            font-size: 1.05rem !important;
-        }
-        div.stButton > button {
-            background: linear-gradient(90deg, #8B4513, #A0522D) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 12px !important;
-            padding: 0.95rem !important;
-            font-size: 1.1rem !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(139,69,19,0.2);
-        }
-        div.stButton > button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 28px rgba(139,69,19,0.3);
-        }
-
-        /* ── Deal Cards ── */
+        .stApp { background-color: #FFFFFF; }
+        /* Enhanced Card Styling with Hover Animation */
         .deal-card {
-            background: white;
-            border-radius: 16px;
-            border: 1px solid #F0E4D9;
-            padding: 1.8rem;
-            margin-bottom: 1.6rem;
-            transition: all 0.35s ease;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+            background-color: #FFFFFF;
+            padding: 20px;
+            border-radius: 15px;
+            border-top: 4px solid #8B4513;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s;
         }
         .deal-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 16px 40px rgba(139,69,19,0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.1);
         }
         .price-tag {
             color: #8B4513;
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-size: 1.4rem;
+            font-weight: bold;
         }
+        /* Status Badge with Pulse Animation */
         .badge {
-            background: #FFE8CC;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            background-color: #FFE4B5;
             color: #8B4513;
-            padding: 0.45rem 1rem;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: inline-block;
-            margin-bottom: 1rem;
+            animation: pulse 1.5s infinite;
         }
-
-        /* ── Sidebar Polish ── */
-        section[data-testid="stSidebar"] {
-            background: #FDF8F2 !important;
-            border-right: 1px solid #F0E4D9 !important;
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
-        .sidebar .stRadio > div > label {
-            font-size: 1.1rem !important;
-            padding: 0.8rem 1rem !important;
+        input {
+            color: #000000 !important;
+            background-color: #FFFFFF !important;
+            border: 2px solid #8B4513 !important;
         }
-    </style>
+        div.stButton > button {
+            background-color: #8B4513 !important;
+            color: #FFFFFF !important;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: 0.3s;
+            width: 100%;
+        }
+        div.stButton > button:hover {
+            background-color: #A0522D !important;
+            transform: scale(1.05);
+        }
+        </style>
     """, unsafe_allow_html=True)
 
-# ────────────────────────────────────────────────
-#  DATA INITIALIZATION (your original mock data)
-# ────────────────────────────────────────────────
+# --- 2. DATA INITIALIZATION ---
 def init_data():
     if 'item_offers' not in st.session_state or not isinstance(st.session_state.item_offers, dict):
         st.session_state.item_offers = {
@@ -159,7 +85,7 @@ def init_data():
                     "price": 25000,
                     "sale_price": None,
                     "is_sale": False,
-                    "desc": "Double door, 250L energy efficient",
+                    "desc": "Double door, 250L",
                     "reviews": [{"user": "user1", "rating": 4, "text": "Good product"}],
                     "open_hours": (9, 21)
                 },
@@ -170,7 +96,7 @@ def init_data():
                     "price": 26000,
                     "sale_price": 24000,
                     "is_sale": True,
-                    "desc": "Double door, 260L with inverter",
+                    "desc": "Double door, 260L",
                     "reviews": [],
                     "open_hours": (10, 22)
                 }
@@ -183,7 +109,7 @@ def init_data():
                     "price": 18000,
                     "sale_price": None,
                     "is_sale": False,
-                    "desc": "Front load, 7kg with steam wash",
+                    "desc": "Front load, 7kg",
                     "reviews": [],
                     "open_hours": (9, 21)
                 },
@@ -194,16 +120,14 @@ def init_data():
                     "price": 17000,
                     "sale_price": None,
                     "is_sale": False,
-                    "desc": "Front load, 6kg inverter motor",
+                    "desc": "Front load, 6kg",
                     "reviews": [{"user": "user1", "rating": 5, "text": "Excellent"}],
                     "open_hours": (10, 22)
                 }
             ]
         }
-
     if 'users' not in st.session_state:
-        st.session_state.users = {"user1": "pass1", "test": "1234"}
-
+        st.session_state.users = {"user1": "pass1"}
     if 'sellers' not in st.session_state:
         st.session_state.sellers = {
             "seller1": {
@@ -221,43 +145,300 @@ def init_data():
                 "address": "456 Ernakulam Rd, Kerala"
             }
         }
-
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'user_location' not in st.session_state:
-        st.session_state.user_location = (9.9312, 76.2673)  # Kochi default
+        st.session_state.user_location = (9.9312, 76.2673)  # Kochi, Kerala (default)
 
-# ────────────────────────────────────────────────
-#  AUTHENTICATION PAGE – Professional card layout
-# ────────────────────────────────────────────────
+# --- 3. UI PAGES ---
+def admin_page():
+    st.title("📦 Inventory Manager")
+
+    with st.expander("💡 CSV Format Instructions"):
+        st.write("Your CSV should have these columns: `name`, `desc`, `price`, `sale_price` (optional)")
+    uploaded_file = st.file_uploader("Bulk Upload via CSV", type="csv")
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            store_info = st.session_state.store_info
+            added_count = 0
+            for _, row in df.iterrows():
+                name = row['name']
+                desc = row['desc']
+                price = row['price']
+                sale_price = row.get('sale_price', 0)
+                is_sale = sale_price > 0 and sale_price < price
+                offer = {
+                    "store": store_info["store_name"],
+                    "address": store_info["address"],
+                    "loc": store_info["loc"],
+                    "price": price,
+                    "sale_price": sale_price if is_sale else None,
+                    "is_sale": is_sale,
+                    "desc": desc,
+                    "reviews": [],  # Reviews not from CSV
+                    "open_hours": store_info["open_hours"]
+                }
+                if name not in st.session_state.item_offers:
+                    st.session_state.item_offers[name] = []
+                updated = False
+                for idx, o in enumerate(st.session_state.item_offers[name]):
+                    if o["store"] == offer["store"]:
+                        st.session_state.item_offers[name][idx] = offer
+                        updated = True
+                        break
+                if not updated:
+                    st.session_state.item_offers[name].append(offer)
+                added_count += 1
+            st.success(f"Imported/Updated {added_count} items!")
+        except Exception as e:
+            st.error(f"Error: {e}")
+    st.divider()
+    st.subheader("Add/Update Single Item")
+    with st.form("manual_add"):
+        c1, c2 = st.columns(2)
+        name = c1.text_input("Product Name")
+        price = c2.number_input("Price (₹)", min_value=0.0)
+        sale_price = c2.number_input("Sale Price (optional, ₹)", min_value=0.0)
+        desc = st.text_area("Description")
+        if st.form_submit_button("Add/Update to Catalog"):
+            if name:
+                store_info = st.session_state.store_info
+                is_sale = sale_price > 0 and sale_price < price
+                offer = {
+                    "store": store_info["store_name"],
+                    "address": store_info["address"],
+                    "loc": store_info["loc"],
+                    "price": price,
+                    "sale_price": sale_price if is_sale else None,
+                    "is_sale": is_sale,
+                    "desc": desc,
+                    "reviews": [],
+                    "open_hours": store_info["open_hours"]
+                }
+                if name not in st.session_state.item_offers:
+                    st.session_state.item_offers[name] = []
+                updated = False
+                for idx, o in enumerate(st.session_state.item_offers[name]):
+                    if o["store"] == offer["store"]:
+                        st.session_state.item_offers[name][idx] = offer
+                        updated = True
+                        break
+                if not updated:
+                    st.session_state.item_offers[name].append(offer)
+                st.toast(f"Success! {name} is now live/updated.")
+            else:
+                st.error("Product name is required.")
+
+def home_page():
+    # Live Location Button
+    st.subheader("🗺️ Enable Live Location")
+    st.write("Click below to share your current location for accurate distances! 📍")
+    components.html("""
+        <button onclick="getLocation()" style="background-color: #8B4513; color: white; padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer;">Get My Location</button>
+        <script>
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+        function showPosition(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const url = new URL(window.parent.location);
+            url.searchParams.set('lat', lat);
+            url.searchParams.set('lon', lon);
+            window.parent.location = url;
+        }
+        function showError(error) {
+            alert("Error getting location: " + error.message);
+        }
+        </script>
+    """, height=60)
+
+    # Check query params for location (modern Streamlit API)
+    query_params = st.query_params
+
+    lat_str = query_params.get('lat')
+    lon_str = query_params.get('lon')
+
+    if lat_str and lon_str:
+        try:
+            lat = float(lat_str[0])
+            lon = float(lon_str[0])
+            st.session_state.user_location = (lat, lon)
+            st.success(f"📍 Live location updated: {lat:.6f}, {lon:.6f}")
+        except (ValueError, IndexError):
+            st.warning("Could not read location from URL parameters.")
+
+    # Manual Location Update
+    with st.expander("Or Update Location Manually"):
+        lat = st.number_input("Latitude", value=st.session_state.user_location[0])
+        lon = st.number_input("Longitude", value=st.session_state.user_location[1])
+        if st.button("Save Manual Location"):
+            st.session_state.user_location = (lat, lon)
+            st.success("Location updated! 🚀")
+
+    # Hero Section
+    col_title, col_loc = st.columns([3, 1])
+    with col_title:
+        st.title("✨ LowKey Deals")
+        st.markdown("### Lowkey the best prices near you. 🛒💸")
+    with col_loc:
+        st.caption("📍 Current Location")
+        st.code(f"Lat: {st.session_state.user_location[0]:.4f}, Lon: {st.session_state.user_location[1]:.4f}")
+
+    # Sales Section
+    st.subheader("🔥 Ongoing Sales")
+    sales_items = []
+    for item_name, offers in st.session_state.item_offers.items():
+        for o in offers:
+            if o.get("is_sale", False):
+                sales_items.append((item_name, o))
+    if sales_items:
+        cols = st.columns(3)
+        for i, (name, o) in enumerate(sales_items):
+            dist = geodesic(st.session_state.user_location, o["loc"]).km
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div class="deal-card">
+                    <span class="badge">Sale 🔥</span>
+                    <h4>{name}</h4>
+                    <p>{o['desc'][:50]}...</p>
+                    <del>₹{o['price']:,}</del> <span class="price-tag">₹{o['sale_price']:,}</span>
+                    <span style="font-size: 0.8rem; color: #888;">📍 {dist:.1f}km</span>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"View Deal", key=f"sale_btn_{i}_{name}"):
+                    st.session_state.selected_item = name
+                    st.rerun()
+    else:
+        st.info("No sales currently. Check back soon! 😊")
+
+    # Search Bar
+    search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Refrigerator'...", key="main_search")
+
+    if search_input:
+        all_items = list(st.session_state.item_offers.keys())
+        suggestions = difflib.get_close_matches(search_input, all_items, n=5, cutoff=0.5)
+        if suggestions:
+            st.write("Did you mean:")
+            cols = st.columns(len(suggestions))
+            for i, sug in enumerate(suggestions):
+                if cols[i].button(f"👉 {sug}", key=f"sug_btn_{i}_{sug}"):
+                    st.session_state.selected_item = sug
+                    st.rerun()
+
+    st.divider()
+
+    # Display Logic
+    if 'selected_item' in st.session_state:
+        item_name = st.session_state.selected_item
+        offers = st.session_state.item_offers.get(item_name, [])
+        if offers:
+            st.header(f"🛍️ {item_name}")
+            user_loc = st.session_state.user_location
+            current_hour = datetime.now().hour
+            annotated_offers = []
+            prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
+            min_price = min(prices) if prices else 0
+            max_price = max(prices) if prices else 0
+            lowest_store = next((o["store"] for o in offers if (o["sale_price"] if o.get("is_sale", False) else o["price"]) == min_price), None)
+            if lowest_store:
+                st.info(f"Lowest price at: {lowest_store} (₹{min_price:,}) 💰")
+            for o in offers:
+                dist = geodesic(user_loc, o["loc"]).km
+                reviews = o.get("reviews", [])
+                avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
+                price_for_effort = o["sale_price"] if o.get("is_sale", False) else o["price"]
+                normalized_price = (price_for_effort - min_price) / (max_price - min_price) if max_price > min_price else 0
+                effort = normalized_price * 50 + dist * 0.5 + (5 - avg_rating)
+                is_open = o["open_hours"][0] <= current_hour < o["open_hours"][1]
+                annotated_offers.append({"offer": o, "dist": dist, "avg_rating": avg_rating, "effort": effort, "is_open": is_open})
+            annotated_offers.sort(key=lambda x: x["effort"])
+            for ao in annotated_offers:
+                o = ao["offer"]
+                st.subheader(f"🏪 {o['store']}")
+                st.write(f"Address: {o['address']}")
+                price = o["sale_price"] if o.get("is_sale", False) else o["price"]
+                st.metric("Price", f"₹{price:,}" + (" (Sale! 🔥)" if o.get("is_sale", False) else ""))
+                st.write(f"Distance: {ao['dist']:.1f} km 🚗")
+                st.write(f"Rating: {ao['avg_rating']:.1f} ⭐" if ao['avg_rating'] > 0 else "No ratings yet 😔")
+                status = "Open ✅" if ao["is_open"] else "Closed ❌"
+                st.write(f"Status: {status}")
+                st.write(f"Effort Score: {ao['effort']:.2f} (lower is better) 📊")
+                img_url = f"https://loremflickr.com/300/200/appliance,{item_name.lower().replace(' ', '_')}"
+                st.image(img_url, caption=f"Sample {item_name}")
+                maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
+                st.markdown(f"[Get Directions on Google Maps 🗺️]({maps_url})")
+                with st.expander("Reviews 📝"):
+                    if o.get("reviews"):
+                        for r in o["reviews"]:
+                            st.write(f"{r['user']}: {r['rating']} ⭐ - {r['text']}")
+                    else:
+                        st.write("No reviews yet. Be the first! ✍️")
+                if st.session_state.role == "User":
+                    with st.form(key=f"review_form_{o['store']}_{item_name}"):
+                        rating = st.slider("Your Rating", 1, 5, 3)
+                        text = st.text_area("Your Review")
+                        if st.form_submit_button("Submit Review"):
+                            o["reviews"].append({"user": st.session_state.username, "rating": rating, "text": text})
+                            st.success("Review added! Thank you! 🎉")
+                            st.rerun()
+            if st.button("⬅️ Back to Browse"):
+                if 'selected_item' in st.session_state:
+                    del st.session_state.selected_item
+                st.rerun()
+        else:
+            st.warning("No offers available for this item. 😕")
+    else:
+        # Grid View
+        st.subheader("🛒 Available Appliances")
+        all_items = list(st.session_state.item_offers.keys())
+        if not all_items:
+            st.warning("The catalog is empty. Sellers, head to 'Manage Inventory' to add deals! 📈")
+        else:
+            cols = st.columns(3)
+            user_loc = st.session_state.user_location
+            for i, name in enumerate(all_items):
+                offers = st.session_state.item_offers[name]
+                prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
+                min_price = min(prices) if prices else 0
+                min_dist = min(geodesic(user_loc, o["loc"]).km for o in offers) if offers else 0
+                with cols[i % 3]:
+                    st.markdown(f"""
+                    <div class="deal-card">
+                        <h4>{name}</h4>
+                        <p class="price-tag">From ₹{min_price:,}</p>
+                        <span style="font-size: 0.8rem; color: #888;">📍 Closest {min_dist:.1f}km</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"Compare Prices", key=f"item_btn_{i}_{name}"):
+                        st.session_state.selected_item = name
+                        st.rerun()
+
 def auth_page():
-    apply_professional_theme()
+    st.title("Welcome to LowKey Deals")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-
-    st.markdown('<div class="auth-header">', unsafe_allow_html=True)
-    st.markdown('<h1>LowKey Deals</h1>', unsafe_allow_html=True)
-    st.markdown('<p>Find the best local appliance prices near you — effortlessly.</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    tab1, tab2 = st.tabs(["Sign In", "Create Account"])
-
-    with tab1:
-        role = st.radio("I want to sign in as", ["User", "Seller"], horizontal=True, label_visibility="collapsed")
-        username = st.text_input("Username", placeholder="yourname")
-        password = st.text_input("Password", type="password", placeholder="••••••••")
-
-        if st.button("Sign In", use_container_width=True):
+    with tab_login:
+        role = st.radio("Select Role", ["User", "Seller"], key="login_role")
+        username = st.text_input("Username", placeholder="Enter your username...", key="login_username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password...", key="login_password")
+        if st.button("Login"):
             if username and password:
                 if role == "User":
                     if username in st.session_state.users and st.session_state.users[username] == password:
                         st.session_state.authenticated = True
                         st.session_state.username = username
                         st.session_state.role = role
+                        st.session_state.store_info = None
                         st.rerun()
                     else:
-                        st.error("Invalid username or password.")
-                else:  # Seller
+                        st.error("Invalid username or password for User.")
+                elif role == "Seller":
                     if username in st.session_state.sellers and st.session_state.sellers[username]["password"] == password:
                         st.session_state.authenticated = True
                         st.session_state.username = username
@@ -265,40 +446,34 @@ def auth_page():
                         st.session_state.store_info = st.session_state.sellers[username]
                         st.rerun()
                     else:
-                        st.error("Invalid credentials for seller.")
+                        st.error("Invalid username or password for Seller.")
             else:
-                st.warning("Please enter username and password.")
+                st.error("Please enter both username and password.")
 
-    with tab2:
-        role = st.radio("I want to create an account as", ["User", "Seller"], horizontal=True, label_visibility="collapsed")
-        username = st.text_input("Choose Username", placeholder="yourname")
-        password = st.text_input("Choose Password", type="password")
-
-        store_name = address = lat = lon = open_from = open_to = None
+    with tab_signup:
+        role = st.radio("Select Role", ["User", "Seller"], key="signup_role")
+        username = st.text_input("Username", placeholder="Choose a username...", key="signup_username")
+        password = st.text_input("Password", type="password", placeholder="Choose a password...", key="signup_password")
         if role == "Seller":
-            store_name = st.text_input("Store Name")
-            address = st.text_input("Store Address")
-            col1, col2 = st.columns(2)
-            with col1:
-                lat = st.number_input("Store Latitude", value=9.93, format="%.5f")
-                open_from = st.number_input("Opening Hour (0-23)", 0, 23, 9)
-            with col2:
-                lon = st.number_input("Store Longitude", value=76.27, format="%.5f")
-                open_to = st.number_input("Closing Hour (0-23)", 0, 23, 21)
-
-        if st.button("Create Account", use_container_width=True):
+            store_name = st.text_input("Store Name", placeholder="Enter your store name...")
+            address = st.text_input("Store Address", placeholder="Enter full address...")
+            lat = st.number_input("Store Latitude", value=9.93)
+            lon = st.number_input("Store Longitude", value=76.27)
+            open_from = st.number_input("Opening Hour (0-23)", min_value=0, max_value=23, value=9)
+            open_to = st.number_input("Closing Hour (0-23)", min_value=0, max_value=23, value=21)
+        if st.button("Sign Up"):
             if username and password:
                 if role == "User":
                     if username in st.session_state.users:
-                        st.error("Username already taken.")
+                        st.error("Username already exists.")
                     else:
                         st.session_state.users[username] = password
-                        st.success("Account created! You can now sign in.")
-                else:
+                        st.success("User signed up! Please login.")
+                elif role == "Seller":
                     if username in st.session_state.sellers:
-                        st.error("Username already taken.")
+                        st.error("Username already exists.")
                     elif not (store_name and address):
-                        st.error("Store name and address are required for sellers.")
+                        st.error("Store name and address are required.")
                     else:
                         st.session_state.sellers[username] = {
                             "password": password,
@@ -307,63 +482,30 @@ def auth_page():
                             "open_hours": (open_from, open_to),
                             "address": address
                         }
-                        st.success("Seller account created! Please sign in.")
+                        st.success("Seller signed up! Please login.")
             else:
-                st.warning("Username and password are required.")
+                st.error("Please enter username and password.")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ────────────────────────────────────────────────
-#  HOME PAGE (you can continue expanding this part)
-# ────────────────────────────────────────────────
-def home_page():
-    apply_professional_theme()
-
-    # Hero Section
-    st.markdown('<div class="hero">', unsafe_allow_html=True)
-    st.markdown('<h1 class="hero-title">LowKey Deals</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-subtitle">Lowkey the best prices near you — discover real local savings today.</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Your existing location picker, search bar, sales section, item grid, detail view...
-    # Paste the rest of your home_page logic here (live location, search, cards, details, etc.)
-    # For brevity, I'm leaving a placeholder — replace with your full home_page content
-
-    st.subheader("Featured Categories")
-    cols = st.columns(3)
-    with cols[0]:
-        st.markdown('<div class="deal-card"><h3>Refrigerators</h3><p>Best deals on double-door & side-by-side models</p></div>', unsafe_allow_html=True)
-    with cols[1]:
-        st.markdown('<div class="deal-card"><h3>Washing Machines</h3><p>Front-load & top-load with inverter tech</p></div>', unsafe_allow_html=True)
-    with cols[2]:
-        st.markdown('<div class="deal-card"><h3>Air Conditioners</h3><p>Inverter & smart ACs at lowest local prices</p></div>', unsafe_allow_html=True)
-
-    # ... add your search bar, item listing, detail view, effort score, reviews, etc.
-
-# ────────────────────────────────────────────────
-#  MAIN FLOW
-# ────────────────────────────────────────────────
+# --- 4. EXECUTION FLOW ---
+apply_theme()
 init_data()
-
-if not st.session_state.get('authenticated', False):
+if not st.session_state.authenticated:
     auth_page()
 else:
     with st.sidebar:
-        st.title("LowKey Deals")
-        st.markdown(f"**Welcome, {st.session_state.username}**")
+        st.markdown(f"### Welcome, {st.session_state.username} 👋")
         if st.session_state.role == "Seller":
-            page = st.radio("Navigation", ["Home", "Manage Inventory"])
+            nav = st.radio("Dashboard", ["Home", "Manage Inventory"])
         else:
-            page = "Home"
+            nav = "Home"
 
-        if st.button("Sign Out", type="primary"):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
+        st.divider()
+        if st.button("Logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
 
-    if page == "Manage Inventory":
-        # Your seller inventory management code here...
-        st.title("Manage Your Inventory")
-        st.write("Add / update products for your store...")
+    if nav == "Manage Inventory":
+        admin_page()
     else:
         home_page()
