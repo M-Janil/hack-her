@@ -181,7 +181,6 @@ def admin_page():
                 }
                 if name not in st.session_state.item_offers:
                     st.session_state.item_offers[name] = []
-                # Update if exists for this store, else append
                 updated = False
                 for idx, o in enumerate(st.session_state.item_offers[name]):
                     if o["store"] == offer["store"]:
@@ -219,7 +218,6 @@ def admin_page():
                 }
                 if name not in st.session_state.item_offers:
                     st.session_state.item_offers[name] = []
-                # Update if exists, else append
                 updated = False
                 for idx, o in enumerate(st.session_state.item_offers[name]):
                     if o["store"] == offer["store"]:
@@ -260,16 +258,20 @@ def home_page():
         </script>
     """, height=60)
 
-    # Check query params for location
-    query_params = st.experimental_get_query_params()
-    if 'lat' in query_params and 'lon' in query_params:
+    # Check query params for location (modern Streamlit API)
+    query_params = st.query_params
+
+    lat_str = query_params.get('lat')
+    lon_str = query_params.get('lon')
+
+    if lat_str and lon_str:
         try:
-            lat = float(query_params['lat'][0])
-            lon = float(query_params['lon'][0])
+            lat = float(lat_str[0])
+            lon = float(lon_str[0])
             st.session_state.user_location = (lat, lon)
-            st.success(f"Location updated to Lat: {lat}, Lon: {lon} 🎉")
-        except ValueError:
-            st.error("Invalid location data.")
+            st.success(f"📍 Live location updated: {lat:.6f}, {lon:.6f}")
+        except (ValueError, IndexError):
+            st.warning("Could not read location from URL parameters.")
 
     # Manual Location Update
     with st.expander("Or Update Location Manually"):
@@ -293,7 +295,7 @@ def home_page():
     sales_items = []
     for item_name, offers in st.session_state.item_offers.items():
         for o in offers:
-            if o["is_sale"]:
+            if o.get("is_sale", False):
                 sales_items.append((item_name, o))
     if sales_items:
         cols = st.columns(3)
@@ -340,23 +342,18 @@ def home_page():
             user_loc = st.session_state.user_location
             current_hour = datetime.now().hour
             annotated_offers = []
-            prices = [o["sale_price"] if o["is_sale"] else o["price"] for o in offers]
-            min_price = min(prices)
-            max_price = max(prices)
-            avg_price = sum(prices) / len(prices)
-            lowest_store = next(o["store"] for o in offers if (o["sale_price"] if o["is_sale"] else o["price"]) == min_price)
-            st.info(f"Lowest price at: {lowest_store} (₹{min_price:,}) 💰")
+            prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
+            min_price = min(prices) if prices else 0
+            max_price = max(prices) if prices else 0
+            lowest_store = next((o["store"] for o in offers if (o["sale_price"] if o.get("is_sale", False) else o["price"]) == min_price), None)
+            if lowest_store:
+                st.info(f"Lowest price at: {lowest_store} (₹{min_price:,}) 💰")
             for o in offers:
                 dist = geodesic(user_loc, o["loc"]).km
-                reviews = o["reviews"]
+                reviews = o.get("reviews", [])
                 avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
-                price_for_effort = o["sale_price"] if o["is_sale"] else o["price"]
-                # Normalized price: 0 if min, 1 if max
-                if max_price > min_price:
-                    normalized_price = (price_for_effort - min_price) / (max_price - min_price)
-                else:
-                    normalized_price = 0
-                # Enhanced Effort Score: normalized_price * 50 + dist * 0.5 + (5 - avg_rating)
+                price_for_effort = o["sale_price"] if o.get("is_sale", False) else o["price"]
+                normalized_price = (price_for_effort - min_price) / (max_price - min_price) if max_price > min_price else 0
                 effort = normalized_price * 50 + dist * 0.5 + (5 - avg_rating)
                 is_open = o["open_hours"][0] <= current_hour < o["open_hours"][1]
                 annotated_offers.append({"offer": o, "dist": dist, "avg_rating": avg_rating, "effort": effort, "is_open": is_open})
@@ -365,8 +362,8 @@ def home_page():
                 o = ao["offer"]
                 st.subheader(f"🏪 {o['store']}")
                 st.write(f"Address: {o['address']}")
-                price = o["sale_price"] if o["is_sale"] else o["price"]
-                st.metric("Price", f"₹{price:,}" + (" (Sale! 🔥)" if o["is_sale"] else ""))
+                price = o["sale_price"] if o.get("is_sale", False) else o["price"]
+                st.metric("Price", f"₹{price:,}" + (" (Sale! 🔥)" if o.get("is_sale", False) else ""))
                 st.write(f"Distance: {ao['dist']:.1f} km 🚗")
                 st.write(f"Rating: {ao['avg_rating']:.1f} ⭐" if ao['avg_rating'] > 0 else "No ratings yet 😔")
                 status = "Open ✅" if ao["is_open"] else "Closed ❌"
@@ -374,11 +371,10 @@ def home_page():
                 st.write(f"Effort Score: {ao['effort']:.2f} (lower is better) 📊")
                 img_url = f"https://loremflickr.com/300/200/appliance,{item_name.lower().replace(' ', '_')}"
                 st.image(img_url, caption=f"Sample {item_name}")
-                # Google Maps Directions Link
                 maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
                 st.markdown(f"[Get Directions on Google Maps 🗺️]({maps_url})")
                 with st.expander("Reviews 📝"):
-                    if o["reviews"]:
+                    if o.get("reviews"):
                         for r in o["reviews"]:
                             st.write(f"{r['user']}: {r['rating']} ⭐ - {r['text']}")
                     else:
@@ -392,7 +388,8 @@ def home_page():
                             st.success("Review added! Thank you! 🎉")
                             st.rerun()
             if st.button("⬅️ Back to Browse"):
-                del st.session_state.selected_item
+                if 'selected_item' in st.session_state:
+                    del st.session_state.selected_item
                 st.rerun()
         else:
             st.warning("No offers available for this item. 😕")
@@ -407,9 +404,9 @@ def home_page():
             user_loc = st.session_state.user_location
             for i, name in enumerate(all_items):
                 offers = st.session_state.item_offers[name]
-                prices = [o["sale_price"] if o["is_sale"] else o["price"] for o in offers]
-                min_price = min(prices)
-                min_dist = min(geodesic(user_loc, o["loc"]).km for o in offers)
+                prices = [o["sale_price"] if o.get("is_sale", False) else o["price"] for o in offers]
+                min_price = min(prices) if prices else 0
+                min_dist = min(geodesic(user_loc, o["loc"]).km for o in offers) if offers else 0
                 with cols[i % 3]:
                     st.markdown(f"""
                     <div class="deal-card">
