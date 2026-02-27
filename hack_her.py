@@ -204,6 +204,24 @@ def home_page():
                 if st.button(f"View Details", key=f"btn_{name}"):
                     st.session_state.selected_item = name
                     st.rerun()
+def login_page():
+    st.title("Welcome to LowKey Deals")
+    
+    # Selection for User or Seller roles
+    role = st.radio("Select Role", ["User", "Seller"], key="role_selection")
+    
+    # Input fields for login
+    user = st.text_input("Username", placeholder="Enter your name...")
+    
+    if st.button("Login"):
+        if user:
+            # Set session state variables to maintain the login session
+            st.session_state.authenticated = True
+            st.session_state.username = user
+            st.session_state.role = role
+            st.rerun() # Refresh the app to show the logged-in view
+        else:
+            st.error("Please enter a username to continue.")             
 
 # --- 4. EXECUTION FLOW ---
 apply_theme()
