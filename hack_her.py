@@ -128,7 +128,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY (with delete + price update)
+# SELLER — MANAGE INVENTORY (delete + price update)
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -142,7 +142,7 @@ def admin_page():
 
     st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
 
-    # ───── CSV Bulk Upload ─────
+    # CSV Bulk Upload
     with st.expander("Bulk upload via CSV", expanded=False):
         st.caption("Columns: name, desc, price, sale_price (optional)")
         uploaded = st.file_uploader("Choose CSV file", type="csv", key="csv_upload")
@@ -188,7 +188,7 @@ def admin_page():
                     count += 1
 
                 if count > 0:
-                    st.success(f"Processed {count} item{'s' if count != 1 else ''}")
+                    st.success(f"Processed {count} items")
                     st.rerun()
 
             except Exception as e:
@@ -196,7 +196,7 @@ def admin_page():
 
     st.divider()
 
-    # ───── Add / Update single product ─────
+    # Add / Update single product
     st.subheader("Add or update single product")
 
     with st.form("single_item_form"):
@@ -245,7 +245,7 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # ───── My Products – Delete & Update Price ─────
+    # My Products – Delete & Update Price
     st.divider()
     st.subheader("My Added Products")
 
@@ -269,7 +269,6 @@ def admin_page():
             with cols[0]:
                 st.markdown(f"**{name}** — ₹{o.get('sale_price') or o['price']:,}")
             with cols[1]:
-                # Price update button & mini-form
                 if st.button("✏️ Update Price", key=f"update_price_{name}_{current_user}"):
                     with st.form(key=f"price_update_{name}_{current_user}"):
                         new_price = st.number_input("New regular price (₹)", value=float(o["price"]), min_value=0.0, step=100.0)
@@ -284,9 +283,7 @@ def admin_page():
                                 o["is_sale"] = False
                             st.success(f"Price updated for **{name}**")
                             st.rerun()
-
             with cols[2]:
-                # Delete button
                 if st.button("🗑️ Delete", key=f"delete_{name}_{current_user}", type="primary", help="Remove this product"):
                     GLOBAL_CATALOG[name] = [
                         ex for ex in GLOBAL_CATALOG[name]
@@ -447,7 +444,6 @@ def home_page():
                 img_url = f"https://loremflickr.com/320/180/appliance,{item_name.lower().replace(' ','_')}"
                 st.image(img_url, use_column_width=True)
 
-                # Changed from link → button
                 maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
                 if st.button("Get Directions on Google Maps 🗺️", key=f"directions_{o['store']}_{item_name}", type="primary"):
                     st.markdown(f'<meta http-equiv="refresh" content="0;url={maps_url}">', unsafe_allow_html=True)
@@ -475,6 +471,42 @@ def home_page():
                                 st.success("Review added! Thank you!")
                                 st.rerun()
 
+                # ── NEW: Price Report Section ──
+                if st.session_state.role == "User":
+                    with st.expander("Report the price you actually paid"):
+                        st.write("Help keep prices accurate — share what you paid (optional bill upload).")
+                        paid_price = st.number_input("Price you paid (₹)", min_value=0.0, step=100.0, key=f"paid_{o['store']}_{item_name}")
+                        bill_file = st.file_uploader("Upload bill photo/PDF (optional)", type=["jpg", "png", "pdf", "jpeg"], key=f"bill_{o['store']}_{item_name}")
+
+                        if st.button("Submit Price Report", key=f"report_price_{o['store']}_{item_name}"):
+                            if paid_price > 0:
+                                report = {
+                                    "user": st.session_state.username,
+                                    "price": paid_price,
+                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                    "bill_filename": bill_file.name if bill_file else None
+                                }
+                                if "price_reports" not in o:
+                                    o["price_reports"] = []
+                                o["price_reports"].append(report)
+
+                                # Optional: simple acknowledgment of file
+                                if bill_file:
+                                    st.info(f"Bill '{bill_file.name}' received (verification pending)")
+
+                                st.success("Price report submitted — thank you!")
+                                st.rerun()
+                            else:
+                                st.error("Please enter a valid price.")
+
+                # Optional: show existing reports (for demo / future use)
+                if "price_reports" in o and o["price_reports"]:
+                    with st.expander("Community reported prices", expanded=False):
+                        for r in o["price_reports"]:
+                            st.write(f"{r['user']} paid ₹{r['price']:,} on {r['timestamp']}")
+                            if r.get("bill_filename"):
+                                st.caption(f"Bill uploaded: {r['bill_filename']}")
+
             if st.button("← Back to browse"):
                 if 'selected_item' in st.session_state:
                     del st.session_state.selected_item
@@ -484,7 +516,6 @@ def home_page():
             st.warning("No offers available for this item.")
 
     else:
-        # ───── Grid view ─────
         st.subheader("🛒 Available Appliances")
         all_items = list(GLOBAL_CATALOG.keys())
         if not all_items:
