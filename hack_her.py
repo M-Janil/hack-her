@@ -128,7 +128,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY (now with store location update)
+# SELLER — MANAGE INVENTORY
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -142,33 +142,7 @@ def admin_page():
 
     st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
 
-    # ───── Update Store Location (NEW) ─────
-    st.divider()
-    st.subheader("Update Store Location")
-
-    current_lat, current_lon = store.get("loc", (9.93, 76.27))  # fallback to Kochi default
-
-    with st.form("update_store_location"):
-        new_lat = st.number_input("Latitude", value=current_lat, format="%.6f", step=0.000001)
-        new_lon = st.number_input("Longitude", value=current_lon, format="%.6f", step=0.000001)
-
-        if st.form_submit_button("Save New Location"):
-            # Update seller's profile
-            store["loc"] = (new_lat, new_lon)
-            st.session_state.store_info = store  # sync session state
-
-            # Also update location in all products this seller owns
-            updated_count = 0
-            for product_name, offers in GLOBAL_CATALOG.items():
-                for offer in offers:
-                    if offer.get("seller_username") == current_user:
-                        offer["loc"] = (new_lat, new_lon)
-                        updated_count += 1
-
-            st.success(f"Store location updated! Applied to {updated_count} product offer(s).")
-            st.rerun()
-
-    # ───── CSV Bulk Upload ─────
+    # CSV Bulk Upload
     with st.expander("Bulk upload via CSV", expanded=False):
         st.caption("Columns: name, desc, price, sale_price (optional)")
         uploaded = st.file_uploader("Choose CSV file", type="csv", key="csv_upload")
@@ -244,7 +218,7 @@ def admin_page():
                 "seller_username": current_user,
                 "store": store["store_name"],
                 "address": store["address"],
-                "loc": store["loc"],  # uses the latest store location
+                "loc": store["loc"],
                 "price": price,
                 "sale_price": sale_price_input if is_sale else None,
                 "is_sale": is_sale,
@@ -338,32 +312,48 @@ def home_page():
             <script>
             function getLocation() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        const url = new URL(window.location);
-                        url.searchParams.set('lat', pos.coords.latitude);
-                        url.searchParams.set('lon', pos.coords.longitude);
-                        window.location = url;
-                    }, err => alert("Location access denied or unavailable"));
+                    navigator.geolocation.getCurrentPosition(
+                        pos => {
+                            const lat = pos.coords.latitude;
+                            const lon = pos.coords.longitude;
+                            const url = new URL(window.location);
+                            url.searchParams.set('lat', lat);
+                            url.searchParams.set('lon', lon);
+                            window.location = url;
+                        },
+                        err => {
+                            let msg = "Could not get location.";
+                            if (err.code === 1) msg = "Location permission denied.";
+                            if (err.code === 2) msg = "Position unavailable.";
+                            if (err.code === 3) msg = "Location request timed out.";
+                            alert(msg + "\\nPlease enable location in your browser/device settings.");
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    alert("Geolocation is not supported by your browser.");
                 }
             }
             </script>
         """, height=70)
 
+        # Read coordinates from URL params after redirect
         q = st.query_params
         if 'lat' in q and 'lon' in q:
             try:
                 lat = float(q['lat'][0])
                 lon = float(q['lon'][0])
                 st.session_state.user_location = (lat, lon)
-                st.success("Location updated")
+                st.success(f"Location updated: {lat:.6f}, {lon:.6f}")
             except:
-                pass
+                st.warning("Could not read location from URL.")
 
         with st.expander("Or set location manually"):
             lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
             lon = st.number_input("Longitude", value=st.session_state.user_location[1], step=0.00001, format="%.6f")
             if st.button("Save"):
                 st.session_state.user_location = (lat, lon)
+                st.success("Manual location saved.")
                 st.rerun()
 
         st.divider()
