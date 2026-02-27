@@ -69,18 +69,18 @@ def apply_theme():
     """, unsafe_allow_html=True)
 
 # --- 2. DATA INITIALIZATION ---
+# --- 2. DATA INITIALIZATION ---
 def init_data():
-    if 'items' not in st.session_state:
-        # Default starting items with mock coordinates (Lat, Lon)
+    # Force 'items' to be a dictionary if it's missing or corrupted
+    if 'items' not in st.session_state or not isinstance(st.session_state.items, dict):
         st.session_state.items = {
-            "Refrigerator": {"desc": "Double door, 250L", "price": 25000, "loc": (18.5204, 73.8567), "trend": "🔥 Hot Deal"},
-            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000, "loc": (18.5300, 73.8600), "trend": "📉 Price Drop"},
-            "Microwave Oven": {"desc": "Convection, 20L", "price": 8500, "loc": (18.5100, 73.8400), "trend": "✨ New Arrival"}
+            "Refrigerator": {"desc": "Double door, 250L", "price": 25000, "loc": (18.52, 73.85), "trend": "🔥 Hot Deal"},
+            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000, "loc": (18.53, 73.86), "trend": "📉 Price Drop"}
         }
+    
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'user_location' not in st.session_state:
-        # Default mock user location (e.g., Central Pune)
         st.session_state.user_location = (18.5204, 73.8567)
 
 # --- 3. UI PAGES ---
