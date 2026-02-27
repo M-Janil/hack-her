@@ -303,23 +303,26 @@ def home_page():
 
     # ───── Location selector ─────
     st.subheader("📍 Your Location")
-    components.html("""
-        <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
-            Get my location
-        </button>
-        <script>
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    const url = new URL(window.location);
-                    url.searchParams.set('lat', pos.coords.latitude);
-                    url.searchParams.set('lon', pos.coords.longitude);
-                    window.location = url;
-                }, err => alert("Location access denied or unavailable"));
+
+    # "Get My Location" button is now only visible to regular Users (not Sellers)
+    if st.session_state.get("role") == "User":
+        components.html("""
+            <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
+                Get my location
+            </button>
+            <script>
+            function getLocation() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        const url = new URL(window.location);
+                        url.searchParams.set('lat', pos.coords.latitude);
+                        url.searchParams.set('lon', pos.coords.longitude);
+                        window.location = url;
+                    }, err => alert("Location access denied or unavailable"));
+                }
             }
-        }
-        </script>
-    """, height=70)
+            </script>
+        """, height=70)
 
     q = st.query_params
     if 'lat' in q and 'lon' in q:
@@ -471,13 +474,12 @@ def home_page():
                                 st.success("Review added! Thank you!")
                                 st.rerun()
 
-                # ── NEW: Price Report Section ──
+                # ── Price Report Section ──
                 if st.session_state.role == "User":
                     with st.expander("Report the price you actually paid"):
                         st.write("Help keep prices accurate — share what you paid (optional bill upload).")
                         paid_price = st.number_input("Price you paid (₹)", min_value=0.0, step=100.0, key=f"paid_{o['store']}_{item_name}")
                         bill_file = st.file_uploader("Upload bill photo/PDF (optional)", type=["jpg", "png", "pdf", "jpeg"], key=f"bill_{o['store']}_{item_name}")
-
                         if st.button("Submit Price Report", key=f"report_price_{o['store']}_{item_name}"):
                             if paid_price > 0:
                                 report = {
@@ -490,7 +492,6 @@ def home_page():
                                     o["price_reports"] = []
                                 o["price_reports"].append(report)
 
-                                # Optional: simple acknowledgment of file
                                 if bill_file:
                                     st.info(f"Bill '{bill_file.name}' received (verification pending)")
 
@@ -499,7 +500,7 @@ def home_page():
                             else:
                                 st.error("Please enter a valid price.")
 
-                # Optional: show existing reports (for demo / future use)
+                # Show existing reports (for demo / future use)
                 if "price_reports" in o and o["price_reports"]:
                     with st.expander("Community reported prices", expanded=False):
                         for r in o["price_reports"]:
