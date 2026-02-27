@@ -82,15 +82,6 @@ def init_data():
     if 'user_location' not in st.session_state:
         st.session_state.user_location = (18.5204, 73.8567)
 
-# --- 4. EXECUTION FLOW ---
-# These MUST be called before the login_page() or home_page() functions run
-apply_theme()
-init_data() 
-
-if not st.session_state.authenticated:
-    login_page()
-else:
-    # Your navigation/sidebar logic...
 
 # --- 3. UI PAGES ---
 
