@@ -304,8 +304,7 @@ def home_page():
     # ───── Location selector ─────
     st.subheader("📍 Your Location")
 
-    # "Get My Location" button is now completely hidden for sellers
-    # Only shown when the user is logged in as a regular User
+    # "Get My Location" button is ONLY shown to regular users (not sellers)
     if st.session_state.get("role") == "User":
         components.html("""
             <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
