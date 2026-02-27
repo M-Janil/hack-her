@@ -69,7 +69,6 @@ def apply_theme():
     """, unsafe_allow_html=True)
 
 # --- 2. DATA INITIALIZATION ---
-# --- 2. DATA INITIALIZATION ---
 def init_data():
     # Force 'items' to be a dictionary if it's missing or corrupted
     if 'items' not in st.session_state or not isinstance(st.session_state.items, dict):
@@ -82,6 +81,16 @@ def init_data():
         st.session_state.authenticated = False
     if 'user_location' not in st.session_state:
         st.session_state.user_location = (18.5204, 73.8567)
+
+# --- 4. EXECUTION FLOW ---
+# These MUST be called before the login_page() or home_page() functions run
+apply_theme()
+init_data() 
+
+if not st.session_state.authenticated:
+    login_page()
+else:
+    # Your navigation/sidebar logic...
 
 # --- 3. UI PAGES ---
 
