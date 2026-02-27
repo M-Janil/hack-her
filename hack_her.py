@@ -137,7 +137,7 @@ def init_data():
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'user_location' not in st.session_state:
-        st.session_state.user_location = (9.9312, 76.2673)  # Kochi, Kerala
+        st.session_state.user_location = (9.9312, 76.2673)  # Kochi, Kerala (editable)
 
 # --- 3. UI PAGES ---
 def admin_page():
@@ -222,6 +222,14 @@ def admin_page():
                 st.error("Product name is required.")
 
 def home_page():
+    # Update User Location
+    with st.expander("Update Your Location"):
+        lat = st.number_input("Latitude", value=st.session_state.user_location[0])
+        lon = st.number_input("Longitude", value=st.session_state.user_location[1])
+        if st.button("Save Location"):
+            st.session_state.user_location = (lat, lon)
+            st.success("Location updated!")
+
     # Hero Section
     col_title, col_loc = st.columns([3, 1])
     with col_title:
@@ -229,7 +237,7 @@ def home_page():
         st.markdown("### Lowkey the best prices near you.")
     with col_loc:
         st.caption("📍 Current Location")
-        st.code("Kerala, IN (Mocked)")
+        st.code(f"Lat: {st.session_state.user_location[0]}, Lon: {st.session_state.user_location[1]}")
 
     # Sales Section
     st.subheader("Ongoing Sales")
@@ -283,15 +291,22 @@ def home_page():
             user_loc = st.session_state.user_location
             current_hour = datetime.now().hour
             annotated_offers = []
+            lowest_price = float('inf')
+            lowest_store = None
             for o in offers:
                 dist = geodesic(user_loc, o["loc"]).km
                 reviews = o["reviews"]
                 avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
                 price_for_effort = o["sale_price"] if o["is_sale"] else o["price"]
+                if price_for_effort < lowest_price:
+                    lowest_price = price_for_effort
+                    lowest_store = o["store"]
                 effort = (price_for_effort / 100) + (dist * 0.5) + (5 - avg_rating)
                 is_open = o["open_hours"][0] <= current_hour < o["open_hours"][1]
                 annotated_offers.append({"offer": o, "dist": dist, "avg_rating": avg_rating, "effort": effort, "is_open": is_open})
             annotated_offers.sort(key=lambda x: x["effort"])
+            if lowest_store:
+                st.info(f"Lowest price at: {lowest_store} (₹{lowest_price:,})")
             for ao in annotated_offers:
                 o = ao["offer"]
                 st.subheader(o["store"])
@@ -305,6 +320,9 @@ def home_page():
                 st.write(f"Effort Score: {ao['effort']:.2f} (lower is better)")
                 img_url = f"https://loremflickr.com/300/200/appliance,{item_name.lower().replace(' ', '_')}"
                 st.image(img_url, use_column_width=True)
+                # Google Maps Directions Link
+                maps_url = f"https://www.google.com/maps/dir/?api=1&origin={user_loc[0]},{user_loc[1]}&destination={o['loc'][0]},{o['loc'][1]}"
+                st.markdown(f"[Get Directions on Google Maps]({maps_url})")
                 with st.expander("Reviews"):
                     if o["reviews"]:
                         for r in o["reviews"]:
@@ -350,42 +368,78 @@ def home_page():
                         st.session_state.selected_item = name
                         st.rerun()
 
-def login_page():
+def auth_page():
     st.title("Welcome to LowKey Deals")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    role = st.radio("Select Role", ["User", "Seller"], key="role_selection")
+    with tab_login:
+        role = st.radio("Select Role", ["User", "Seller"], key="login_role")
+        username = st.text_input("Username", placeholder="Enter your username...", key="login_username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password...", key="login_password")
+        if st.button("Login"):
+            if username and password:
+                if role == "User":
+                    if username in st.session_state.users and st.session_state.users[username] == password:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.session_state.store_info = None
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password for User.")
+                elif role == "Seller":
+                    if username in st.session_state.sellers and st.session_state.sellers[username]["password"] == password:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.session_state.store_info = st.session_state.sellers[username]
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password for Seller.")
+            else:
+                st.error("Please enter both username and password.")
 
-    username = st.text_input("Username", placeholder="Enter your username...")
-    password = st.text_input("Password", type="password", placeholder="Enter your password...")
-
-    if st.button("Login"):
-        if username and password:
-            if role == "User":
-                if username in st.session_state.users and st.session_state.users[username] == password:
-                    st.session_state.authenticated = True
-                    st.session_state.username = username
-                    st.session_state.role = role
-                    st.session_state.store_info = None
-                    st.rerun()
-                else:
-                    st.error("Invalid username or password for User.")
-            elif role == "Seller":
-                if username in st.session_state.sellers and st.session_state.sellers[username]["password"] == password:
-                    st.session_state.authenticated = True
-                    st.session_state.username = username
-                    st.session_state.role = role
-                    st.session_state.store_info = st.session_state.sellers[username]
-                    st.rerun()
-                else:
-                    st.error("Invalid username or password for Seller.")
-        else:
-            st.error("Please enter both username and password.")
+    with tab_signup:
+        role = st.radio("Select Role", ["User", "Seller"], key="signup_role")
+        username = st.text_input("Username", placeholder="Choose a username...", key="signup_username")
+        password = st.text_input("Password", type="password", placeholder="Choose a password...", key="signup_password")
+        if role == "Seller":
+            store_name = st.text_input("Store Name", placeholder="Enter your store name...")
+            address = st.text_input("Store Address", placeholder="Enter full address...")
+            lat = st.number_input("Store Latitude", value=9.93)
+            lon = st.number_input("Store Longitude", value=76.27)
+            open_from = st.number_input("Opening Hour (0-23)", min_value=0, max_value=23, value=9)
+            open_to = st.number_input("Closing Hour (0-23)", min_value=0, max_value=23, value=21)
+        if st.button("Sign Up"):
+            if username and password:
+                if role == "User":
+                    if username in st.session_state.users:
+                        st.error("Username already exists.")
+                    else:
+                        st.session_state.users[username] = password
+                        st.success("User signed up! Please login.")
+                elif role == "Seller":
+                    if username in st.session_state.sellers:
+                        st.error("Username already exists.")
+                    elif not (store_name and address):
+                        st.error("Store name and address are required.")
+                    else:
+                        st.session_state.sellers[username] = {
+                            "password": password,
+                            "store_name": store_name,
+                            "loc": (lat, lon),
+                            "open_hours": (open_from, open_to),
+                            "address": address
+                        }
+                        st.success("Seller signed up! Please login.")
+            else:
+                st.error("Please enter username and password.")
 
 # --- 4. EXECUTION FLOW ---
 apply_theme()
 init_data()
 if not st.session_state.authenticated:
-    login_page()
+    auth_page()
 else:
     with st.sidebar:
         st.markdown(f"### Welcome, {st.session_state.username}")
