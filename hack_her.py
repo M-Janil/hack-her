@@ -2,121 +2,141 @@ import streamlit as st
 import pandas as pd
 import difflib
 from geopy.distance import geodesic
-import webbrowser
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="LowKey Deals", layout="wide")
 
-# --- 1. THEME (Kept exactly as you requested) ---
+# --- 1. THEME: FORCING BLACK TEXT & VISIBLE INPUTS ---
 def apply_theme():
     st.markdown("""
         <style>
+        /* Force EVERY label and piece of text to Black */
         html, body, [data-testid="stHeader"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, label, span, .stRadio p {
             color: #000000 !important;
             font-weight: 500;
         }
-        .stTextInput label { color: #000000 !important; font-weight: bold !important; }
-        .stApp { background-color: #FFFFFF; }
-        input { color: #000000 !important; background-color: #F0F2F6 !important; border: 2px solid #8B4513 !important; }
-        div.stButton > button { background-color: #8B4513 !important; color: #FFFFFF !important; font-weight: bold; border: none; }
-        [data-testid="stSidebar"] { background-color: #F5F5DC !important; }
-        .store-card { border: 1px solid #8B4513; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+
+        /* Make the Input Labels specifically bold and black */
+        .stTextInput label, .stSelectbox label, .stRadio label {
+            color: #000000 !important;
+            font-size: 1.1rem !important;
+            font-weight: bold !important;
+        }
+
+        /* Set Background to White */
+        .stApp {
+            background-color: #FFFFFF;
+        }
+
+        /* Style Input Boxes so they are visible with black text inside */
+        input {
+            color: #000000 !important;
+            background-color: #F0F2F6 !important;
+            border: 2px solid #8B4513 !important;
+        }
+
+        /* Style the Buttons */
+        div.stButton > button {
+            background-color: #8B4513 !important;
+            color: #FFFFFF !important;
+            font-weight: bold;
+            border: none;
+            padding: 10px 30px;
+        }
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {
+            background-color: #F5F5DC !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA INITIALIZATION (Fixes the AttributeError) ---
+# --- 2. DATA INITIALIZATION ---
 def init_data():
-    # User's current location (Kerala, India)
-    if 'user_location' not in st.session_state:
-        st.session_state.user_location = (10.8505, 76.2711)
-
     if 'items' not in st.session_state:
-        # Mocking items with linked store data
         st.session_state.items = {
-            "Samsung Refrigerator": {
-                "desc": "Double door, 250L Digital Inverter",
-                "stores": [
-                    {"name": "Electronic Plaza", "price": 24500, "coords": (10.8520, 76.2750), "rating": 4.5},
-                    {"name": "Home Comforts", "price": 26000, "coords": (10.8400, 76.2600), "rating": 4.2}
-                ]
-            },
-            "Washing Machine": {
-                "desc": "Front load, 7kg Fully Automatic",
-                "stores": [
-                    {"name": "City Retail", "price": 17500, "coords": (10.8600, 76.2800), "rating": 4.0},
-                    {"name": "Digital Hub", "price": 18200, "coords": (10.8300, 76.2500), "rating": 4.8}
-                ]
-            }
+            "Refrigerator": {"desc": "Double door, 250L", "price": 25000},
+            "Washing Machine": {"desc": "Front load, 7kg", "price": 18000},
+            "Microwave Oven": {"desc": "Convection, 20L", "price": 8500},
+            "Air Conditioner": {"desc": "1.5 Ton, 5 Star", "price": 35000},
+            "Vacuum Cleaner": {"desc": "Handheld, Cordless", "price": 12000},
+            "Dishwasher": {"desc": "12 Place Settings", "price": 45000}
         }
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
+    if 'username' not in st.session_state:
+        st.session_state.username = ""
+    if 'search_query' not in st.session_state:
+        st.session_state.search_query = ""
 
-# --- 3. UI FUNCTIONS ---
-def get_google_maps_url(coords):
-    return f"https://www.google.com/maps?q={coords[0]},{coords[1]}"
+# --- 3. UI PAGES ---
+def login_page():
+    st.title("Welcome to LowKey Deals")
+    st.radio("Select Role", ["User", "Seller"], key="role_selection")
+    
+    user = st.text_input("Username", key="user_input")
+    pw = st.text_input("Password", type="password", key="pw_input")
+    
+    if st.button("Login"):
+        if user:
+            st.session_state.authenticated = True
+            st.session_state.username = user
+            st.rerun()
 
 def home_page():
     st.title("LowKey Deals")
     st.markdown("### *Lowkey the best prices near you.*")
     
-    # --- SEARCH BAR ---
-    search_input = st.text_input("🔍 Search for appliances (e.g., 'Samsung' or 'Washing Machine')...", key="main_search")
+    # --- SEARCH BAR SECTION ---
+    st.markdown("---")
+    search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Fridge' or 'Oven'...", key="main_search")
     
     if search_input:
-        all_item_names = list(st.session_state.items.keys())
-        matches = difflib.get_close_matches(search_input, all_item_names, n=3, cutoff=0.2)
+        # Fuzzy matching logic
+        all_items = list(st.session_state.items.keys())
+        suggestions = difflib.get_close_matches(search_input, all_items, n=3, cutoff=0.3)
         
-        if matches:
-            st.markdown(f"#### Results for '{matches[0]}'")
-            item_data = st.session_state.items[matches[0]]
-            st.write(item_data['desc'])
-            
-            st.divider()
-            st.subheader("Available Stores Near You")
-            
-            # Show store list with distance
-            for store in item_data['stores']:
-                dist = round(geodesic(st.session_state.user_location, store['coords']).km, 2)
-                
-                with st.container():
-                    st.markdown(f"""
-                    <div class="store-card">
-                        <h4 style="margin:0;">🏪 {store['name']}</h4>
-                        <p style="color:#8B4513; font-size:1.2rem; font-weight:bold; margin:5px 0;">Price: ₹{store['price']}</p>
-                        <p style="margin:0;">📍 Distance: {dist} km away</p>
-                        <p style="margin:0;">⭐ Rating: {store['rating']}/5</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if st.button(f"Open in Google Maps ({store['name']})", key=store['name']):
-                        url = get_google_maps_url(store['coords'])
-                        st.write(f"Click here: [Google Maps Link]({url})")
-        else:
-            st.warning("No matches found. Try 'Samsung' or 'Washing Machine'.")
+        if suggestions:
+            st.write("Did you mean:")
+            cols = st.columns(len(suggestions))
+            for i, suggestion in enumerate(suggestions):
+                if cols[i].button(f"👉 {suggestion}", key=f"sug_{suggestion}"):
+                    st.session_state.selected_item = suggestion
+                    st.rerun()
     
-    st.divider()
-    st.header("All Items")
-    cols = st.columns(2)
-    for i, (name, info) in enumerate(st.session_state.items.items()):
-        with cols[i % 2]:
-            st.subheader(name)
-            st.write(info['desc'])
-            if st.button(f"View Store Prices", key=f"btn_{name}"):
-                st.info("Use the search bar above to see specific store distances for this item!")
+    st.markdown("---")
+    
+    # Display Details for selected item or general list
+    if 'selected_item' in st.session_state:
+        item_name = st.session_state.selected_item
+        st.subheader(f"Results for: {item_name}")
+        st.write(st.session_state.items[item_name]['desc'])
+        st.write(f"**Best Price: ₹{st.session_state.items[item_name]['price']}**")
+        if st.button("Back to All Items"):
+            del st.session_state.selected_item
+            st.rerun()
+    else:
+        st.header("Featured Appliances")
+        items = st.session_state.get('items', {})
+        cols = st.columns(2)
+        for i, (name, info) in enumerate(items.items()):
+            with cols[i % 2]:
+                st.markdown(f"#### {name}")
+                st.write(info['desc'])
+                st.write(f"**Price: ₹{info['price']}**")
+                if st.button(f"View Details", key=f"home_btn_{name}"):
+                    st.session_state.selected_item = name
+                    st.rerun()
 
-# --- 4. EXECUTION ---
+# --- 4. EXECUTION FLOW ---
 apply_theme()
 init_data()
 
 if not st.session_state.authenticated:
-    # Simplified login to get you past the first screen
-    st.title("Welcome to LowKey Deals")
-    user = st.text_input("Username")
-    if st.button("Login"):
-        st.session_state.authenticated = True
-        st.rerun()
+    login_page()
 else:
     with st.sidebar:
+        st.markdown(f"### Logged in: {st.session_state.username}")
         if st.button("Logout"):
             st.session_state.authenticated = False
             st.rerun()
