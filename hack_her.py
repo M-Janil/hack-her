@@ -301,11 +301,10 @@ def home_page():
     st.title("✨ LowKey Deals")
     st.caption("Discover the best local appliance prices near you")
 
-    # ───── Location selector ─────
-    st.subheader("📍 Your Location")
-
-    # "Get My Location" button is ONLY shown to regular users (not sellers)
+    # Location section — only for regular users
     if st.session_state.get("role") == "User":
+        st.subheader("📍 Your Location")
+
         components.html("""
             <button onclick="getLocation()" style="background:#8B4513;color:white;padding:10px 20px;border:none;border-radius:20px;cursor:pointer;">
                 Get my location
@@ -324,24 +323,24 @@ def home_page():
             </script>
         """, height=70)
 
-    q = st.query_params
-    if 'lat' in q and 'lon' in q:
-        try:
-            lat = float(q['lat'][0])
-            lon = float(q['lon'][0])
-            st.session_state.user_location = (lat, lon)
-            st.success("Location updated")
-        except:
-            pass
+        q = st.query_params
+        if 'lat' in q and 'lon' in q:
+            try:
+                lat = float(q['lat'][0])
+                lon = float(q['lon'][0])
+                st.session_state.user_location = (lat, lon)
+                st.success("Location updated")
+            except:
+                pass
 
-    with st.expander("Or set location manually"):
-        lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
-        lon = st.number_input("Longitude", value=st.session_state.user_location[1], step=0.00001, format="%.6f")
-        if st.button("Save"):
-            st.session_state.user_location = (lat, lon)
-            st.rerun()
+        with st.expander("Or set location manually"):
+            lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
+            lon = st.number_input("Longitude", value=st.session_state.user_location[1], step=0.00001, format="%.6f")
+            if st.button("Save"):
+                st.session_state.user_location = (lat, lon)
+                st.rerun()
 
-    st.divider()
+        st.divider()
 
     col_title, col_loc = st.columns([4, 1])
     with col_title:
