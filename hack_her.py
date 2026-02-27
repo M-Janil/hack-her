@@ -127,10 +127,8 @@ def admin_page():
                     "trend": "🆕 Just Added"
                 }
                 st.toast(f"Success! {name} is now live.")
-
 def home_page():
     # --- STEP 1: SAFETY INITIALIZATION ---
-    # If the app reruns and state is lost, this forces a rebuild
     if 'items' not in st.session_state or not isinstance(st.session_state.items, dict):
         init_data()
 
@@ -146,7 +144,6 @@ def home_page():
     # --- STEP 3: SEARCH LOGIC ---
     search_input = st.text_input("🔍 Search for appliances...", placeholder="Type 'Fridge'...", key="main_search")
     
-    # Use .get() to avoid crashing if state flickers
     catalog = st.session_state.get('items', {})
     
     if search_input:
@@ -157,13 +154,14 @@ def home_page():
             st.write("Did you mean:")
             cols = st.columns(len(suggestions))
             for i, sug in enumerate(suggestions):
-                if cols[i].button(f"👉 {sug}", key=f"sug_{sug}"):
+                # Unique key for suggestion buttons
+                if cols[i].button(f"👉 {sug}", key=f"sug_btn_{i}_{sug}"):
                     st.session_state.selected_item = sug
                     st.rerun()
 
     st.divider()
     
-    # --- STEP 4: DISPLAY LOGIC (FIXES THE ATTRIBUTEERROR) ---
+    # --- STEP 4: DISPLAY LOGIC ---
     if 'selected_item' in st.session_state and st.session_state.selected_item in catalog:
         # DETAIL VIEW
         item_name = st.session_state.selected_item
@@ -178,26 +176,25 @@ def home_page():
             st.write(item_info.get('desc', 'Quality deal!'))
             st.metric("Price", f"₹{item_info.get('price', 0):,}")
             
-            # Distance logic using geopy
             if 'loc' in item_info:
                 dist = geodesic(st.session_state.user_location, item_info['loc']).km
                 st.write(f"📍 **{dist:.1f} km** away from you")
 
-            if st.button("Reserve Deal"):
+            if st.button("Reserve Deal", key="reserve_btn_unique"):
                 st.balloons()
-                st.success("Deal Reserved! Show this to the seller.")
+                st.success("Deal Reserved!")
             
-            if st.button("⬅️ Back to Browse"):
+            if st.button("⬅️ Back to Browse", key="back_btn_unique"):
                 del st.session_state.selected_item
                 st.rerun()
     else:
-        # GRID VIEW - This is where your original error was located
+        # GRID VIEW
         if not catalog:
-            st.warning("Lowkey... the catalog is empty. Sellers, please add some items!")
+            st.warning("Catalog is empty.")
         else:
             st.subheader("Featured Deals")
             cols = st.columns(3)
-            # We use catalog.items() on the safe dictionary we fetched earlier
+            # FIX: Using 'i' in the key ensures every button is unique
             for i, (name, info) in enumerate(catalog.items()):
                 with cols[i % 3]:
                     st.markdown(f"""
@@ -207,9 +204,11 @@ def home_page():
                         <p style="font-weight: bold; color: #8B4513;">₹{info.get('price', 0):,}</p>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"View {name}", key=f"btn_{name}"):
+                    # The key now includes the index 'i' to prevent duplicates
+                    if st.button(f"View {name}", key=f"grid_btn_{i}_{name}"):
                         st.session_state.selected_item = name
                         st.rerun()
+
     # --- STEP 4: DISPLAY DETAILS OR GRID ---
     if 'selected_item' in st.session_state and st.session_state.selected_item in st.session_state.items:
         # DETAIL VIEW
