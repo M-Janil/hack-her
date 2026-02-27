@@ -342,13 +342,9 @@ def home_page():
 
         st.divider()
 
-    col_title, col_loc = st.columns([4, 1])
-    with col_title:
-        st.title("✨ LowKey Deals")
-        st.markdown("### Highkey savings on local appliances")
-    with col_loc:
-        st.caption("📍 Current location")
-        st.code(f"Lat: {st.session_state.user_location[0]:.4f}   Lon: {st.session_state.user_location[1]:.4f}")
+    # Removed the second title repetition — only one title now
+    # No column layout for title anymore — just the caption below the main title
+    st.markdown("### Highkey savings on local appliances")
 
     # ───── Hot sales section ─────
     st.subheader("🔥 Ongoing Sales")
