@@ -111,7 +111,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY (with refresh & delete fixed)
+# SELLER — MANAGE INVENTORY (refresh button removed)
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -254,15 +254,10 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # ───── My Added Products ───── with Refresh + Delete
+    # ───── My Added Products ───── (no refresh button)
     st.divider()
     st.subheader("My Added Products")
 
-    # Refresh button - forces full list rebuild
-    if st.button("🔄 Refresh Product List"):
-        st.rerun()
-
-    # Build product list
     my_products = []
     for product_name, offers in GLOBAL_CATALOG.items():
         for offer in offers:
@@ -290,18 +285,16 @@ def admin_page():
             with cols[1]:
                 if st.button("✏️ Update Price", key=f"upd_btn_{key_prefix}"):
                     with st.form(key=f"upd_form_{key_prefix}"):
-                        new_regular = st.number_input("New regular price (₹)", 
-                                                     value=float(offer["price"]), 
-                                                     min_value=0.0, 
+                        new_regular = st.number_input("New regular price (₹)",
+                                                     value=float(offer["price"]),
+                                                     min_value=0.0,
                                                      step=100.0,
                                                      key=f"reg_{key_prefix}")
-
-                        new_sale = st.number_input("New sale price (optional)", 
-                                                  value=float(offer.get("sale_price") or 0), 
-                                                  min_value=0.0, 
+                        new_sale = st.number_input("New sale price (optional)",
+                                                  value=float(offer.get("sale_price") or 0),
+                                                  min_value=0.0,
                                                   step=100.0,
                                                   key=f"sale_{key_prefix}")
-
                         if st.form_submit_button("Save New Prices"):
                             offer["price"] = new_regular
                             if new_sale > 0 and new_sale < new_regular:
@@ -310,7 +303,6 @@ def admin_page():
                             else:
                                 offer["sale_price"] = None
                                 offer["is_sale"] = False
-
                             st.success(f"Price updated → ₹{new_regular:,}")
                             st.rerun()
 
