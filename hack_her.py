@@ -111,7 +111,7 @@ def init_data():
         st.session_state.role = None
 
 # ────────────────────────────────────────────────
-# SELLER — MANAGE INVENTORY (PRICE UPDATE FIXED)
+# SELLER — MANAGE INVENTORY (with refresh & delete fixed)
 # ────────────────────────────────────────────────
 def admin_page():
     st.title("📦 Manage Inventory")
@@ -254,11 +254,15 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # ───── My Added Products ───── (PRICE UPDATE NOW WORKS)
+    # ───── My Added Products ───── with Refresh + Delete
     st.divider()
     st.subheader("My Added Products")
 
-    # Rebuild fresh every render
+    # Refresh button - forces full list rebuild
+    if st.button("🔄 Refresh Product List"):
+        st.rerun()
+
+    # Build product list
     my_products = []
     for product_name, offers in GLOBAL_CATALOG.items():
         for offer in offers:
@@ -273,7 +277,7 @@ def admin_page():
     else:
         for idx, item in enumerate(my_products):
             name = item["product_name"]
-            offer = item["offer"]  # DIRECT REFERENCE
+            offer = item["offer"]
 
             key_prefix = f"prod_{idx}_{name.replace(' ', '_')}_{current_user}"
 
@@ -299,7 +303,6 @@ def admin_page():
                                                   key=f"sale_{key_prefix}")
 
                         if st.form_submit_button("Save New Prices"):
-                            # UPDATE THE ACTUAL SHARED OBJECT
                             offer["price"] = new_regular
                             if new_sale > 0 and new_sale < new_regular:
                                 offer["sale_price"] = new_sale
@@ -317,6 +320,17 @@ def admin_page():
                 if st.button(btn_text, key=f"stock_{key_prefix}"):
                     offer["in_stock"] = not current_stock
                     st.success(f"**{name}** marked as {'In Stock' if offer['in_stock'] else 'Out of Stock'}")
+                    st.rerun()
+
+                # Delete button
+                if st.button("🗑️ Delete", key=f"del_{key_prefix}", type="primary"):
+                    GLOBAL_CATALOG[name] = [
+                        ex for ex in GLOBAL_CATALOG[name]
+                        if ex.get("seller_username") != current_user
+                    ]
+                    if not GLOBAL_CATALOG[name]:
+                        del GLOBAL_CATALOG[name]
+                    st.success(f"Product **{name}** deleted.")
                     st.rerun()
 
     # Reviews & Price Reports
@@ -386,23 +400,23 @@ def home_page():
                             let msg = "Could not get location.";
                             switch(error.code) {
                                 case error.PERMISSION_DENIED:
-                                    msg = "Location permission denied. Please allow access in your browser settings.";
+                                    msg = "Location permission denied.";
                                     break;
                                 case error.POSITION_UNAVAILABLE:
-                                    msg = "Location information is unavailable.";
+                                    msg = "Location unavailable.";
                                     break;
                                 case error.TIMEOUT:
-                                    msg = "Location request timed out.";
+                                    msg = "Timed out.";
                                     break;
                             }
                             status.innerHTML = msg;
-                            alert(msg + "\\nMake sure location services are enabled on your device.");
+                            alert(msg + "\\nEnable location in settings.");
                         },
                         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                     );
                 } else {
-                    status.innerHTML = "Geolocation is not supported by your browser.";
-                    alert("Your browser does not support geolocation.");
+                    status.innerHTML = "Geolocation not supported.";
+                    alert("Browser does not support geolocation.");
                 }
             };
             </script>
@@ -416,7 +430,7 @@ def home_page():
                 st.session_state.user_location = (lat, lon)
                 st.success(f"Location updated: {lat:.6f}, {lon:.6f}")
             except:
-                st.warning("Could not parse location from URL.")
+                st.warning("Could not read location.")
 
         with st.expander("Or set location manually"):
             lat = st.number_input("Latitude", value=st.session_state.user_location[0], step=0.00001, format="%.6f")
@@ -427,7 +441,7 @@ def home_page():
 
         st.divider()
 
-    # ───── Hot sales section ─────
+    # Hot sales
     st.subheader("🔥 Ongoing Sales")
     sales_items = []
     for item_name, offers in GLOBAL_CATALOG.items():
@@ -457,7 +471,7 @@ def home_page():
     else:
         st.info("No active sales at the moment.")
 
-    # ───── Search ─────
+    # Search
     search_term = st.text_input("🔍 Search appliances...", placeholder="e.g. Refrigerator, Washing Machine")
     if search_term:
         all_names = list(GLOBAL_CATALOG.keys())
@@ -472,7 +486,7 @@ def home_page():
 
     st.divider()
 
-    # ───── Selected product detail ─────
+    # Product detail view
     if 'selected_item' in st.session_state:
         item_name = st.session_state.selected_item
         offers = GLOBAL_CATALOG.get(item_name, [])
