@@ -282,29 +282,29 @@ def admin_page():
                 stock_status = "In Stock ✅" if offer.get("in_stock", True) else "Out of Stock ❌"
                 st.markdown(f"**{name}** — ₹{current_price:,}  •  {stock_status}")
 
-            with cols[1]:
-                if st.button("✏️ Update Price", key=f"upd_btn_{key_prefix}"):
-                    with st.form(key=f"upd_form_{key_prefix}"):
-                        new_regular = st.number_input("New regular price (₹)",
-                                                     value=float(offer["price"]),
-                                                     min_value=0.0,
-                                                     step=100.0,
-                                                     key=f"reg_{key_prefix}")
-                        new_sale = st.number_input("New sale price (optional)",
-                                                  value=float(offer.get("sale_price") or 0),
-                                                  min_value=0.0,
-                                                  step=100.0,
-                                                  key=f"sale_{key_prefix}")
-                        if st.form_submit_button("Save New Prices"):
-                            offer["price"] = new_regular
-                            if new_sale > 0 and new_sale < new_regular:
-                                offer["sale_price"] = new_sale
-                                offer["is_sale"] = True
-                            else:
-                                offer["sale_price"] = None
-                                offer["is_sale"] = False
-                            st.success(f"Price updated → ₹{new_regular:,}")
-                            st.rerun()
+           with cols[1]:
+           with st.expander("✏️ Update Price", expanded=False):
+           with st.form(key=f"upd_form_{key_prefix}"):
+            new_regular = st.number_input("New regular price (₹)",
+                                         value=float(offer["price"]),
+                                         min_value=0.0,
+                                         step=100.0,
+                                         key=f"reg_{key_prefix}")
+            new_sale = st.number_input("New sale price (optional)",
+                                      value=float(offer.get("sale_price") or 0),
+                                      min_value=0.0,
+                                      step=100.0,
+                                      key=f"sale_{key_prefix}")
+            if st.form_submit_button("Save New Prices"):
+                offer["price"] = new_regular
+                if new_sale > 0 and new_sale < new_regular:
+                    offer["sale_price"] = new_sale
+                    offer["is_sale"] = True
+                else:
+                    offer["sale_price"] = None
+                    offer["is_sale"] = False
+                st.success(f"Price updated → ₹{new_regular:,}")
+                st.rerun()
 
             with cols[2]:
                 current_stock = offer.get("in_stock", True)
