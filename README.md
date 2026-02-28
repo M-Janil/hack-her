@@ -1,7 +1,7 @@
  LowKey Deals 
  Team Details
 
-#Team Name: LowKey Deals
+Team Name: LowKey Deals
 
 Member 1-Janil M – Mar Athanasius College of Engineering
 
