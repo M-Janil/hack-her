@@ -49,14 +49,9 @@ def apply_theme():
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
-            background: #FFE4B5;
-            color: #8B4513;
-            animation: pulse 2s infinite;
         }
-        @keyframes pulse {
-            0%,100% { transform: scale(1); }
-            50%     { transform: scale(1.04); }
-        }
+        .in-stock { background: #28a745; color: white; }
+        .out-of-stock { background: #dc3545; color: white; }
         input, textarea {
             color: #000 !important;
             background: #fff !important;
@@ -129,6 +124,30 @@ def admin_page():
     current_user = st.session_state.username
 
     st.markdown(f"**Store:** {store['store_name']}  •  {store['address']}")
+
+    # Update Store Location
+    st.divider()
+    st.subheader("Update Store Location")
+
+    current_lat, current_lon = store.get("loc", (9.93, 76.27))
+
+    with st.form("update_store_location"):
+        new_lat = st.number_input("Latitude", value=current_lat, format="%.6f", step=0.000001)
+        new_lon = st.number_input("Longitude", value=current_lon, format="%.6f", step=0.000001)
+
+        if st.form_submit_button("Save New Location"):
+            store["loc"] = (new_lat, new_lon)
+            st.session_state.store_info = store
+
+            updated_count = 0
+            for product_name, offers in GLOBAL_CATALOG.items():
+                for offer in offers:
+                    if offer.get("seller_username") == current_user:
+                        offer["loc"] = (new_lat, new_lon)
+                        updated_count += 1
+
+            st.success(f"Store location updated! Applied to {updated_count} offers.")
+            st.rerun()
 
     # CSV Bulk Upload
     with st.expander("Bulk upload via CSV", expanded=False):
@@ -235,10 +254,11 @@ def admin_page():
         elif submitted:
             st.error("Product name is required")
 
-    # ───── My Added Products ───── FIXED PRICE UPDATE
+    # ───── My Added Products ───── (PRICE UPDATE NOW WORKS)
     st.divider()
     st.subheader("My Added Products")
 
+    # Rebuild fresh every render
     my_products = []
     for product_name, offers in GLOBAL_CATALOG.items():
         for offer in offers:
@@ -253,7 +273,9 @@ def admin_page():
     else:
         for idx, item in enumerate(my_products):
             name = item["product_name"]
-            offer = item["offer"]  # this is the actual dict in GLOBAL_CATALOG
+            offer = item["offer"]  # DIRECT REFERENCE
+
+            key_prefix = f"prod_{idx}_{name.replace(' ', '_')}_{current_user}"
 
             cols = st.columns([4, 1, 1])
             with cols[0]:
@@ -262,13 +284,22 @@ def admin_page():
                 st.markdown(f"**{name}** — ₹{current_price:,}  •  {stock_status}")
 
             with cols[1]:
-                if st.button("✏️ Update Price", key=f"update_price_{idx}_{name}"):
-                    with st.form(key=f"price_update_form_{idx}_{name}"):
-                        new_regular = st.number_input("New regular price (₹)", value=float(offer["price"]), min_value=0.0, step=100.0)
-                        new_sale = st.number_input("New sale price (optional)", value=float(offer.get("sale_price") or 0), min_value=0.0, step=100.0)
+                if st.button("✏️ Update Price", key=f"upd_btn_{key_prefix}"):
+                    with st.form(key=f"upd_form_{key_prefix}"):
+                        new_regular = st.number_input("New regular price (₹)", 
+                                                     value=float(offer["price"]), 
+                                                     min_value=0.0, 
+                                                     step=100.0,
+                                                     key=f"reg_{key_prefix}")
+
+                        new_sale = st.number_input("New sale price (optional)", 
+                                                  value=float(offer.get("sale_price") or 0), 
+                                                  min_value=0.0, 
+                                                  step=100.0,
+                                                  key=f"sale_{key_prefix}")
 
                         if st.form_submit_button("Save New Prices"):
-                            # UPDATE THE ACTUAL OBJECT IN GLOBAL_CATALOG
+                            # UPDATE THE ACTUAL SHARED OBJECT
                             offer["price"] = new_regular
                             if new_sale > 0 and new_sale < new_regular:
                                 offer["sale_price"] = new_sale
@@ -277,18 +308,18 @@ def admin_page():
                                 offer["sale_price"] = None
                                 offer["is_sale"] = False
 
-                            st.success(f"Price updated for **{name}** → ₹{new_regular:,}")
+                            st.success(f"Price updated → ₹{new_regular:,}")
                             st.rerun()
 
             with cols[2]:
                 current_stock = offer.get("in_stock", True)
                 btn_text = "Mark Out of Stock" if current_stock else "Mark In Stock"
-                if st.button(btn_text, key=f"stock_toggle_{idx}_{name}"):
+                if st.button(btn_text, key=f"stock_{key_prefix}"):
                     offer["in_stock"] = not current_stock
                     st.success(f"**{name}** marked as {'In Stock' if offer['in_stock'] else 'Out of Stock'}")
                     st.rerun()
 
-    # Reviews & Price Reports (unchanged)
+    # Reviews & Price Reports
     st.divider()
     st.subheader("My Reviews & Reports")
 
@@ -338,7 +369,7 @@ def home_page():
             <script>
             document.getElementById("getLocBtn").onclick = function() {
                 const status = document.getElementById("locStatus");
-                status.innerHTML = "Requesting location... Please allow access when prompted.";
+                status.innerHTML = "Requesting location... Please allow access.";
 
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
