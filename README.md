@@ -15,25 +15,13 @@ Project Description
 
 LowKey Deals is a web application that helps users compare product prices across nearby local offline stores without physically visiting each shop. The platform promotes price transparency, saves time, and supports local retailers by increasing their visibility in the digital space.
 
-Problem Statement
+The Problem Statement
 
-Customers cannot easily compare prices between local offline stores without visiting each shop physically. This process is time-consuming, inconvenient, and often leads to purchasing products at higher prices due to lack of price transparency.
-
-Meanwhile, local retailers struggle with limited digital presence and reduced visibility compared to large e-commerce platforms.
-
-Our Solution
-
-LowKey Deals bridges the gap between offline shopping and digital convenience by:
-
-Allowing users to search for products
-
-Displaying price comparisons from nearby stores
-
-Helping customers identify the best available deals
-
-Providing local retailers with a simple digital presence
-
-This ensures better decision-making for customers and increased exposure for offline businesses.
+In many cities and towns, product prices vary between different local stores. Customers often need to physically visit multiple shops to compare prices of appliances, electronics, or other products. This process is time-consuming, inconvenient, and sometimes leads to buying products at higher prices due to lack of proper comparison.
+There is currently no centralized digital platform where customers can easily compare prices from local offline stores in one place.To solve this problem, an Offline Price Comparison Web Application is proposed.
+The Solution
+As a solution we created a simple offline price comparison web application where local store owners can update their product prices and stock details. Customers can search for products, compare prices from nearby stores, and view store information in one place.
+This platform saves time, improves transparency, and helps customers choose the best price while increasing visibility for local shops.
 
 Tech Stack
 
